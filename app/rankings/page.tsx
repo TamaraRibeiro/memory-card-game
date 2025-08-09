@@ -18,9 +18,17 @@ interface PersonalStats extends UserStats {
   rank: number
 }
 
+interface GlobalStat extends UserStats {
+  rank: number
+  accuracy: number
+  averageScore: number
+}
+
+type UserLite = { id: string; email?: string } | null
+
 export default function RankingsPage() {
-  const [user, setUser] = useState(null)
-  const [globalRankings, setGlobalRankings] = useState<UserStats[]>([])
+  const [user, setUser] = useState<UserLite>(null)
+  const [globalRankings, setGlobalRankings] = useState<GlobalStat[]>([])
   const [personalStats, setPersonalStats] = useState<PersonalStats | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -37,10 +45,10 @@ export default function RankingsPage() {
     setLoading(false)
   }, [router])
 
-  const loadRankings = async (userId: string) => {
+  const loadRankings = (userId: string) => {
     try {
-      // Use mock global rankings and sort by score
-      const processedGlobal = mockGlobalRankings
+      const processedGlobal: GlobalStat[] = mockGlobalRankings
+        .slice() // avoid mutating original
         .sort((a, b) => b.total_score - a.total_score)
         .map((stat, index) => ({
           ...stat,
@@ -51,9 +59,7 @@ export default function RankingsPage() {
 
       setGlobalRankings(processedGlobal)
 
-      // Load personal stats from localStorage
       const personalData = getStorageData("memory-cards-user-stats", null)
-
       if (personalData) {
         const userRank = processedGlobal.findIndex((stat) => stat.user_id === userId) + 1
         const personalWithRank: PersonalStats = {
@@ -85,22 +91,7 @@ export default function RankingsPage() {
     }
   }
 
-  const getRankBadgeColor = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return "bg-yellow-100 text-yellow-800 border-yellow-300"
-      case 2:
-        return "bg-gray-100 text-gray-800 border-gray-300"
-      case 3:
-        return "bg-amber-100 text-amber-800 border-amber-300"
-      default:
-        return "bg-blue-100 text-blue-800 border-blue-300"
-    }
-  }
-
-  const getInitials = (email: string) => {
-    return email ? email.substring(0, 2).toUpperCase() : "U"
-  }
+  const getInitials = (email: string) => (email ? email.substring(0, 2).toUpperCase() : "U")
 
   if (loading) {
     return (
@@ -265,15 +256,13 @@ export default function RankingsPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {globalRankings.map((stat, index) => (
+                    {globalRankings.map((stat) => (
                       <div
                         key={stat.id}
-                        className={`flex items-center justify-between p-4 rounded-lg border ${
-                          stat.user_id === user?.id ? "bg-primary/5 border-primary/20" : "bg-card"
-                        }`}
+                        className={`flex items-center justify-between p-4 rounded-lg border ${stat.user_id === user?.id ? "bg-primary/5 border-primary/20" : "bg-card"}`}
                       >
                         <div className="flex items-center space-x-4">
-                          <div className="flex items-center justify-center w-12 h-12">{getRankIcon(index + 1)}</div>
+                          <div className="flex items-center justify-center w-12 h-12">{getRankIcon(stat.rank)}</div>
                           <div className="flex items-center space-x-3">
                             <Avatar>
                               <AvatarFallback>{getInitials(stat.email || "U")}</AvatarFallback>

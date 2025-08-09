@@ -44,13 +44,8 @@ export interface UserStats {
   email?: string
 }
 
-// Mock user
-export const mockUser = {
-  id: "user-1",
-  email: "usuario@exemplo.com",
-}
+export const mockUser = { id: "user-1", email: "usuario@exemplo.com" }
 
-// Mock subjects
 export const mockSubjects: Subject[] = [
   {
     id: "subject-1",
@@ -78,7 +73,6 @@ export const mockSubjects: Subject[] = [
   },
 ]
 
-// Mock cards
 export const mockCards: CardItem[] = [
   {
     id: "card-1",
@@ -148,7 +142,6 @@ export const mockCards: CardItem[] = [
   },
 ]
 
-// Mock user stats
 export const mockUserStats: UserStats = {
   id: "stats-1",
   user_id: "user-1",
@@ -161,7 +154,6 @@ export const mockUserStats: UserStats = {
   email: "usuario@exemplo.com",
 }
 
-// Mock global rankings
 export const mockGlobalRankings: UserStats[] = [
   {
     id: "stats-1",
@@ -220,13 +212,12 @@ export const mockGlobalRankings: UserStats[] = [
   },
 ]
 
-// Local storage helpers
 export const getStorageData = (key: string, defaultValue: any) => {
   if (typeof window === "undefined") return defaultValue
   try {
     const item = window.localStorage.getItem(key)
     return item ? JSON.parse(item) : defaultValue
-  } catch (error) {
+  } catch {
     return defaultValue
   }
 }
@@ -240,20 +231,10 @@ export const setStorageData = (key: string, value: any) => {
   }
 }
 
-// Initialize data in localStorage
 export const initializeData = () => {
   if (typeof window === "undefined") return
-
-  if (!localStorage.getItem("memory-cards-subjects")) {
-    setStorageData("memory-cards-subjects", mockSubjects)
-  }
-  if (!localStorage.getItem("memory-cards-cards")) {
-    setStorageData("memory-cards-cards", mockCards)
-  }
-  if (!localStorage.getItem("memory-cards-user-stats")) {
-    setStorageData("memory-cards-user-stats", mockUserStats)
-  }
-  if (!localStorage.getItem("memory-cards-user")) {
-    setStorageData("memory-cards-user", mockUser)
-  }
+  if (!localStorage.getItem("memory-cards-subjects")) setStorageData("memory-cards-subjects", mockSubjects)
+  if (!localStorage.getItem("memory-cards-cards")) setStorageData("memory-cards-cards", mockCards)
+  if (!localStorage.getItem("memory-cards-user-stats")) setStorageData("memory-cards-user-stats", mockUserStats)
+  if (!localStorage.getItem("memory-cards-user")) setStorageData("memory-cards-user", mockUser)
 }

@@ -43,22 +43,17 @@ interface GameState {
   gameCompleted: boolean
 }
 
+type UserLite = { id: string; email?: string } | null
+
 export default function GamePage() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<UserLite>(null)
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
   const [gameStarted, setGameStarted] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
-  // Game configuration
-  const [config, setConfig] = useState<GameConfig>({
-    totalCards: 10,
-    timePerCard: null,
-    subjectId: null,
-  })
-
-  // Game state
+  const [config, setConfig] = useState<GameConfig>({ totalCards: 10, timePerCard: null, subjectId: null })
   const [gameState, setGameState] = useState<GameState>({
     sessionId: null,
     currentCardIndex: 0,
@@ -73,8 +68,7 @@ export default function GamePage() {
     gameCompleted: false,
   })
 
-  // Timer
-  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null)
+  const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     initializeData()
@@ -101,32 +95,23 @@ export default function GamePage() {
     return () => {
       if (timer) clearTimeout(timer)
     }
-  }, [gameState.timeLeft, gameState.showResult])
+  }, [gameState.timeLeft, gameState.showResult]) // eslint-disable-line
 
   const loadSubjects = () => {
     try {
-      const subjects = getStorageData("memory-cards-subjects", [])
-      setSubjects(subjects)
+      const subs = getStorageData("memory-cards-subjects", [])
+      setSubjects(subs)
     } catch (error) {
       console.error("Error loading subjects:", error)
-      toast({
-        title: "Erro ao carregar assuntos",
-        description: "Tente novamente mais tarde.",
-        variant: "destructive",
-      })
+      toast({ title: "Erro ao carregar assuntos", description: "Tente novamente mais tarde.", variant: "destructive" })
     }
   }
 
-  const startGame = async () => {
+  const startGame = () => {
     if (!user) return
-
     try {
       let allCards = getStorageData("memory-cards-cards", [])
-
-      if (config.subjectId) {
-        allCards = allCards.filter((card) => card.subject_id === config.subjectId)
-      }
-
+      if (config.subjectId) allCards = allCards.filter((card: GameCard) => card.subject_id === config.subjectId)
       if (!allCards || allCards.length === 0) {
         toast({
           title: "Nenhum card encontrado",
@@ -135,15 +120,9 @@ export default function GamePage() {
         })
         return
       }
-
-      // Shuffle and limit cards
       const shuffledCards = allCards.sort(() => Math.random() - 0.5)
       const gameCards = shuffledCards.slice(0, Math.min(config.totalCards, allCards.length))
-
-      // Create mock session ID
       const sessionId = `session-${Date.now()}`
-
-      // Initialize game state
       setGameState({
         sessionId,
         currentCardIndex: 0,
@@ -157,16 +136,11 @@ export default function GamePage() {
         isCorrect: null,
         gameCompleted: false,
       })
-
       setGameStarted(true)
       toast({ title: "Jogo iniciado! Boa sorte!" })
     } catch (error) {
       console.error("Error starting game:", error)
-      toast({
-        title: "Erro ao iniciar jogo",
-        description: "Tente novamente.",
-        variant: "destructive",
-      })
+      toast({ title: "Erro ao iniciar jogo", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
@@ -174,30 +148,16 @@ export default function GamePage() {
     checkAnswer(true)
   }
 
-  const checkAnswer = async (timeUp = false) => {
+  const checkAnswer = (timeUp = false) => {
     const currentCard = gameState.cards[gameState.currentCardIndex]
     const answer = gameState.userAnswer.toLowerCase().trim()
     const correctAnswer = currentCard.content.toLowerCase()
 
-    // Simple similarity check - you can make this more sophisticated
     const isCorrect =
       !timeUp &&
       (correctAnswer.includes(answer) || answer.includes(correctAnswer) || similarity(answer, correctAnswer) > 0.6)
 
     const points = isCorrect ? currentCard.difficulty * 10 : 0
-
-    // Save game result
-    try {
-      // await supabase.from("game_results").insert({
-      //   session_id: gameState.sessionId,
-      //   card_id: currentCard.id,
-      //   user_answer: gameState.userAnswer,
-      //   is_correct: isCorrect,
-      //   time_taken: config.timePerCard ? config.timePerCard - (gameState.timeLeft || 0) : null,
-      // })
-    } catch (error) {
-      console.error("Error saving game result:", error)
-    }
 
     setGameState((prev) => ({
       ...prev,
@@ -213,12 +173,9 @@ export default function GamePage() {
 
   const nextCard = () => {
     const nextIndex = gameState.currentCardIndex + 1
-
     if (nextIndex >= gameState.cards.length) {
-      // Game completed
       completeGame()
     } else {
-      // Next card
       setGameState((prev) => ({
         ...prev,
         currentCardIndex: nextIndex,
@@ -230,9 +187,8 @@ export default function GamePage() {
     }
   }
 
-  const completeGame = async () => {
+  const completeGame = () => {
     try {
-      // Update user stats
       const currentStats = getStorageData("memory-cards-user-stats", {
         total_games: 0,
         total_correct: 0,
@@ -251,7 +207,6 @@ export default function GamePage() {
       }
 
       setStorageData("memory-cards-user-stats", updatedStats)
-
       setGameState((prev) => ({ ...prev, gameCompleted: true }))
       toast({
         title: "Jogo concluído!",
@@ -285,36 +240,29 @@ export default function GamePage() {
     if (timer) clearTimeout(timer)
   }
 
-  // Simple similarity function
   const similarity = (s1: string, s2: string) => {
     const longer = s1.length > s2.length ? s1 : s2
     const shorter = s1.length > s2.length ? s2 : s1
     const editDistance = levenshteinDistance(longer, shorter)
-    return (longer.length - editDistance) / longer.length
+    return longer.length === 0 ? 0 : (longer.length - editDistance) / longer.length
   }
 
   const levenshteinDistance = (str1: string, str2: string) => {
-    const matrix = []
-    for (let i = 0; i <= str2.length; i++) {
-      matrix[i] = [i]
-    }
-    for (let j = 0; j <= str1.length; j++) {
-      matrix[0][j] = j
-    }
+    const matrix: number[][] = []
+    for (let i = 0; i <= str2.length; i++) matrix[i] = [i]
+    for (let j = 0; j <= str1.length; j++) matrix[0][j] = j
     for (let i = 1; i <= str2.length; i++) {
       for (let j = 1; j <= str1.length; j++) {
-        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-          matrix[i][j] = matrix[i - 1][j - 1]
-        } else {
-          matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
-        }
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) matrix[i][j] = matrix[i - 1][j - 1]
+        else matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
       }
     }
     return matrix[str2.length][str1.length]
   }
 
   const getCurrentCard = () => gameState.cards[gameState.currentCardIndex]
-  const getProgress = () => ((gameState.currentCardIndex + 1) / gameState.cards.length) * 100
+  const getProgress = () =>
+    gameState.cards.length ? ((gameState.currentCardIndex + 1) / gameState.cards.length) * 100 : 0
 
   if (loading) {
     return (
@@ -359,7 +307,6 @@ export default function GamePage() {
 
       <main className="container mx-auto px-4 py-8">
         {!gameStarted ? (
-          // Game Configuration
           <div className="max-w-2xl mx-auto">
             <Card>
               <CardHeader>
@@ -391,10 +338,7 @@ export default function GamePage() {
                   <Select
                     value={config.timePerCard?.toString() || "none"}
                     onValueChange={(value) =>
-                      setConfig({
-                        ...config,
-                        timePerCard: value === "none" ? null : Number.parseInt(value),
-                      })
+                      setConfig({ ...config, timePerCard: value === "none" ? null : Number.parseInt(value) })
                     }
                   >
                     <SelectTrigger>
@@ -414,12 +358,7 @@ export default function GamePage() {
                   <Label htmlFor="subject">Assunto (opcional)</Label>
                   <Select
                     value={config.subjectId || "all"}
-                    onValueChange={(value) =>
-                      setConfig({
-                        ...config,
-                        subjectId: value === "all" ? null : value,
-                      })
-                    }
+                    onValueChange={(value) => setConfig({ ...config, subjectId: value === "all" ? null : value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -443,7 +382,6 @@ export default function GamePage() {
             </Card>
           </div>
         ) : gameState.gameCompleted ? (
-          // Game Results
           <div className="max-w-2xl mx-auto">
             <Card>
               <CardHeader className="text-center">
@@ -487,7 +425,6 @@ export default function GamePage() {
             </Card>
           </div>
         ) : (
-          // Game Play
           <div className="max-w-4xl mx-auto">
             <div className="mb-6">
               <Progress value={getProgress()} className="h-2" />
@@ -505,7 +442,8 @@ export default function GamePage() {
               <CardContent>
                 <div className="mb-6">
                   <p className="text-lg leading-relaxed">
-                    {getCurrentCard()?.content.substring(0, Math.floor(getCurrentCard()?.content.length * 0.4))}...
+                    {getCurrentCard()?.content.substring(0, Math.floor((getCurrentCard()?.content.length || 0) * 0.4))}
+                    ...
                   </p>
                 </div>
 
@@ -550,7 +488,7 @@ export default function GamePage() {
                         </div>
                         {gameState.isCorrect && (
                           <div className="text-green-700">
-                            <strong>Pontos ganhos:</strong> {getCurrentCard()?.difficulty * 10}
+                            <strong>Pontos ganhos:</strong> {getCurrentCard()?.difficulty! * 10}
                           </div>
                         )}
                       </div>

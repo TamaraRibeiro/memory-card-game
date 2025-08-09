@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -28,26 +27,13 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Plus, Edit, Trash2, ArrowLeft, BookOpen } from "lucide-react"
 import Link from "next/link"
-import { useToast } from "@/components/ui/use-toast" // Import useToast
+import { useToast } from "@/hooks/use-toast"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-interface Subject {
-  id: string
-  name: string
-  description: string | null
-}
-
-interface CardItem {
-  id: string
-  title: string
-  content: string
-  difficulty: number
-  subject_id: string
-  subjects?: { name: string }
-}
+type UserLite = { id: string; email?: string } | null
 
 export default function CardsPage() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<UserLite>(null)
   const [subjects, setSubjects] = useState<ImportedSubject[]>([])
   const [cards, setCards] = useState<ImportedCardItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,16 +42,10 @@ export default function CardsPage() {
   const [editingSubject, setEditingSubject] = useState<ImportedSubject | null>(null)
   const [editingCard, setEditingCard] = useState<ImportedCardItem | null>(null)
   const router = useRouter()
-  const { toast } = useToast() // Declare useToast
+  const { toast } = useToast()
 
-  // Form states
   const [subjectForm, setSubjectForm] = useState({ name: "", description: "" })
-  const [cardForm, setCardForm] = useState({
-    title: "",
-    content: "",
-    difficulty: 1,
-    subject_id: "",
-  })
+  const [cardForm, setCardForm] = useState({ title: "", content: "", difficulty: 1, subject_id: "" })
 
   useEffect(() => {
     initializeData()
@@ -83,34 +63,25 @@ export default function CardsPage() {
     try {
       const subjectsData = getStorageData("memory-cards-subjects", [])
       const cardsData = getStorageData("memory-cards-cards", [])
-
-      // Add subject names to cards
-      const cardsWithSubjects = cardsData.map((card) => ({
+      const cardsWithSubjects = cardsData.map((card: ImportedCardItem) => ({
         ...card,
-        subjects: { name: subjectsData.find((s) => s.id === card.subject_id)?.name || "Unknown" },
+        subjects: { name: subjectsData.find((s: ImportedSubject) => s.id === card.subject_id)?.name || "Unknown" },
       }))
-
       setSubjects(subjectsData)
       setCards(cardsWithSubjects)
     } catch (error) {
       console.error("Error loading data:", error)
-      toast({
-        title: "Erro ao carregar dados",
-        description: "Tente novamente mais tarde.",
-        variant: "destructive",
-      })
+      toast({ title: "Erro ao carregar dados", description: "Tente novamente mais tarde.", variant: "destructive" })
     }
   }
 
-  const handleSubjectSubmit = async (e: React.FormEvent) => {
+  const handleSubjectSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
-
     try {
       const currentSubjects = getStorageData("memory-cards-subjects", [])
-
       if (editingSubject) {
-        const updatedSubjects = currentSubjects.map((subject) =>
+        const updatedSubjects = currentSubjects.map((subject: ImportedSubject) =>
           subject.id === editingSubject.id
             ? {
                 ...subject,
@@ -134,30 +105,23 @@ export default function CardsPage() {
         setStorageData("memory-cards-subjects", [...currentSubjects, newSubject])
         toast({ title: "Assunto criado com sucesso!" })
       }
-
       setSubjectForm({ name: "", description: "" })
       setEditingSubject(null)
       setShowSubjectDialog(false)
       loadData()
     } catch (error) {
       console.error("Error saving subject:", error)
-      toast({
-        title: "Erro ao salvar assunto",
-        description: "Tente novamente.",
-        variant: "destructive",
-      })
+      toast({ title: "Erro ao salvar assunto", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
-  const handleCardSubmit = async (e: React.FormEvent) => {
+  const handleCardSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
-
     try {
       const currentCards = getStorageData("memory-cards-cards", [])
-
       if (editingCard) {
-        const updatedCards = currentCards.map((card) =>
+        const updatedCards = currentCards.map((card: ImportedCardItem) =>
           card.id === editingCard.id
             ? {
                 ...card,
@@ -185,63 +149,44 @@ export default function CardsPage() {
         setStorageData("memory-cards-cards", [...currentCards, newCard])
         toast({ title: "Card criado com sucesso!" })
       }
-
       setCardForm({ title: "", content: "", difficulty: 1, subject_id: "" })
       setEditingCard(null)
       setShowCardDialog(false)
       loadData()
     } catch (error) {
       console.error("Error saving card:", error)
-      toast({
-        title: "Erro ao salvar card",
-        description: "Tente novamente.",
-        variant: "destructive",
-      })
+      toast({ title: "Erro ao salvar card", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
-  const handleDeleteSubject = async (id: string) => {
+  const handleDeleteSubject = (id: string) => {
     if (!confirm("Tem certeza? Todos os cards deste assunto serão excluídos.")) return
-
     try {
       const currentSubjects = getStorageData("memory-cards-subjects", [])
       const currentCards = getStorageData("memory-cards-cards", [])
-
-      const updatedSubjects = currentSubjects.filter((subject) => subject.id !== id)
-      const updatedCards = currentCards.filter((card) => card.subject_id !== id)
-
+      const updatedSubjects = currentSubjects.filter((subject: ImportedSubject) => subject.id !== id)
+      const updatedCards = currentCards.filter((card: ImportedCardItem) => card.subject_id !== id)
       setStorageData("memory-cards-subjects", updatedSubjects)
       setStorageData("memory-cards-cards", updatedCards)
-
       toast({ title: "Assunto excluído com sucesso!" })
       loadData()
     } catch (error) {
       console.error("Error deleting subject:", error)
-      toast({
-        title: "Erro ao excluir assunto",
-        description: "Tente novamente.",
-        variant: "destructive",
-      })
+      toast({ title: "Erro ao excluir assunto", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
-  const handleDeleteCard = async (id: string) => {
+  const handleDeleteCard = (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este card?")) return
-
     try {
       const currentCards = getStorageData("memory-cards-cards", [])
-      const updatedCards = currentCards.filter((card) => card.id !== id)
+      const updatedCards = currentCards.filter((card: ImportedCardItem) => card.id !== id)
       setStorageData("memory-cards-cards", updatedCards)
-
       toast({ title: "Card excluído com sucesso!" })
       loadData()
     } catch (error) {
       console.error("Error deleting card:", error)
-      toast({
-        title: "Erro ao excluir card",
-        description: "Tente novamente.",
-        variant: "destructive",
-      })
+      toast({ title: "Erro ao excluir card", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
@@ -253,12 +198,7 @@ export default function CardsPage() {
 
   const openEditCard = (card: ImportedCardItem) => {
     setEditingCard(card)
-    setCardForm({
-      title: card.title,
-      content: card.content,
-      difficulty: card.difficulty,
-      subject_id: card.subject_id,
-    })
+    setCardForm({ title: card.title, content: card.content, difficulty: card.difficulty, subject_id: card.subject_id })
     setShowCardDialog(true)
   }
 
@@ -457,7 +397,6 @@ export default function CardsPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {/* Subjects Section */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4">Assuntos ({subjects.length})</h2>
           {subjects.length === 0 ? (
@@ -502,7 +441,6 @@ export default function CardsPage() {
           )}
         </div>
 
-        {/* Cards Section */}
         <div>
           <h2 className="text-xl font-semibold mb-4">Cards ({cards.length})</h2>
           {cards.length === 0 ? (
@@ -546,7 +484,7 @@ export default function CardsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <Badge variant="outline">{card.subjects?.name}</Badge>
+                      <Badge variant="outline">{(card as any).subjects?.name}</Badge>
                       <Badge className={getDifficultyColor(card.difficulty)}>
                         {getDifficultyText(card.difficulty)}
                       </Badge>

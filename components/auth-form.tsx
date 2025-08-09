@@ -19,41 +19,27 @@ export function AuthForm() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-
-    // Simulate API call
     setTimeout(() => {
       if (email && password) {
         setStorageData("memory-cards-user", { ...mockUser, email })
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Redirecionando para o dashboard...",
-        })
+        toast({ title: "Login realizado com sucesso!", description: "Redirecionando para o dashboard..." })
         router.push("/dashboard")
       } else {
-        toast({
-          title: "Erro no login",
-          description: "Preencha todos os campos",
-          variant: "destructive",
-        })
+        toast({ title: "Erro no login", description: "Preencha todos os campos", variant: "destructive" })
       }
       setLoading(false)
-    }, 1000)
+    }, 800)
   }
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-
-    // Simulate API call
     setTimeout(() => {
       if (email && password.length >= 6) {
-        toast({
-          title: "Cadastro realizado!",
-          description: "Você já pode fazer login com suas credenciais.",
-        })
+        toast({ title: "Cadastro realizado!", description: "Você já pode fazer login com suas credenciais." })
       } else {
         toast({
           title: "Erro no cadastro",
@@ -62,33 +48,27 @@ export function AuthForm() {
         })
       }
       setLoading(false)
-    }, 1000)
+    }, 800)
   }
 
   return (
-    <div className="relative z-50 w-full max-w-md">
+    <div className="relative z-30 w-full max-w-md">
       <Card className="relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-2 shadow-2xl">
-        <CardHeader className="relative z-10">
+        <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Acesse sua conta</CardTitle>
           <CardDescription className="text-center">Entre ou crie uma nova conta para começar</CardDescription>
         </CardHeader>
-        <CardContent className="relative z-10">
+        <CardContent>
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 relative z-10">
-              <TabsTrigger value="signin" className="relative z-10">
-                Entrar
-              </TabsTrigger>
-              <TabsTrigger value="signup" className="relative z-10">
-                Cadastrar
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="signin">Entrar</TabsTrigger>
+              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="signin" className="relative z-10">
-              <form onSubmit={handleSignIn} className="space-y-4 relative z-10">
-                <div className="space-y-2 relative z-10">
-                  <Label htmlFor="signin-email" className="relative z-10">
-                    Email
-                  </Label>
+            <TabsContent value="signin">
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signin-email">Email</Label>
                   <Input
                     id="signin-email"
                     type="email"
@@ -96,43 +76,30 @@ export function AuthForm() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="relative z-10 bg-white dark:bg-gray-800 border-2 focus:border-primary"
-                    style={{ pointerEvents: "auto" }}
                   />
                 </div>
-                <div className="space-y-2 relative z-10">
-                  <Label htmlFor="signin-password" className="relative z-10">
-                    Senha
-                  </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="signin-password">Senha</Label>
                   <Input
                     id="signin-password"
                     type="password"
-                    placeholder="Digite sua senha"
+                    placeholder="Sua senha"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="relative z-10 bg-white dark:bg-gray-800 border-2 focus:border-primary"
-                    style={{ pointerEvents: "auto" }}
                   />
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full relative z-10 bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-md transition-all duration-200"
-                  disabled={loading}
-                  style={{ pointerEvents: "auto" }}
-                >
+                <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Entrar
                 </Button>
               </form>
             </TabsContent>
 
-            <TabsContent value="signup" className="relative z-10">
-              <form onSubmit={handleSignUp} className="space-y-4 relative z-10">
-                <div className="space-y-2 relative z-10">
-                  <Label htmlFor="signup-email" className="relative z-10">
-                    Email
-                  </Label>
+            <TabsContent value="signup">
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Email</Label>
                   <Input
                     id="signup-email"
                     type="email"
@@ -140,14 +107,10 @@ export function AuthForm() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="relative z-10 bg-white dark:bg-gray-800 border-2 focus:border-primary"
-                    style={{ pointerEvents: "auto" }}
                   />
                 </div>
-                <div className="space-y-2 relative z-10">
-                  <Label htmlFor="signup-password" className="relative z-10">
-                    Senha
-                  </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Senha</Label>
                   <Input
                     id="signup-password"
                     type="password"
@@ -156,16 +119,9 @@ export function AuthForm() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={6}
-                    className="relative z-10 bg-white dark:bg-gray-800 border-2 focus:border-primary"
-                    style={{ pointerEvents: "auto" }}
                   />
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full relative z-10 bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-md transition-all duration-200"
-                  disabled={loading}
-                  style={{ pointerEvents: "auto" }}
-                >
+                <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Criar Conta
                 </Button>

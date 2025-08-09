@@ -32,18 +32,12 @@ export function GameCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
-      whileHover={{
-        scale: 1.05,
-        rotateY: 5,
-        transition: { duration: 0.2 },
-      }}
+      whileHover={{ scale: 1.05, rotateY: 5, transition: { duration: 0.2 } }}
       whileTap={{ scale: 0.95 }}
       className={`cursor-pointer ${className}`}
     >
       <Card className="relative overflow-hidden group bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10">
-        {/* Shine Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
         <CardHeader className="relative">
           <div className="flex items-center justify-between">
             <motion.div

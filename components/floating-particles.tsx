@@ -18,55 +18,40 @@ export function FloatingParticles() {
 
   useEffect(() => {
     const colors = [
-      "rgb(59, 130, 246)", // blue-500
-      "rgb(147, 51, 234)", // purple-500
-      "rgb(236, 72, 153)", // pink-500
-      "rgb(34, 197, 94)", // green-500
-      "rgb(251, 191, 36)", // yellow-500
+      "rgb(59, 130, 246)",
+      "rgb(147, 51, 234)",
+      "rgb(236, 72, 153)",
+      "rgb(34, 197, 94)",
+      "rgb(251, 191, 36)",
     ]
-
-    const initialParticles: Particle[] = Array.from({ length: 15 }, (_, i) => ({
+    const w = typeof window !== "undefined" ? window.innerWidth : 1200
+    const h = typeof window !== "undefined" ? window.innerHeight : 800
+    const initialParticles: Particle[] = Array.from({ length: 16 }, (_, i) => ({
       id: i,
-      x: Math.random() * (typeof window !== "undefined" ? window.innerWidth : 1200),
-      y: Math.random() * (typeof window !== "undefined" ? window.innerHeight : 800),
+      x: Math.random() * w,
+      y: Math.random() * h,
       size: Math.random() * 4 + 2,
       speedX: (Math.random() - 0.5) * 0.3,
       speedY: (Math.random() - 0.5) * 0.3,
       opacity: Math.random() * 0.3 + 0.1,
       color: colors[Math.floor(Math.random() * colors.length)],
     }))
-
     setParticles(initialParticles)
 
-    const animateParticles = () => {
-      setParticles((prevParticles) =>
-        prevParticles.map((particle) => {
-          let newX = particle.x + particle.speedX
-          let newY = particle.y + particle.speedY
-
-          const width = typeof window !== "undefined" ? window.innerWidth : 1200
-          const height = typeof window !== "undefined" ? window.innerHeight : 800
-
-          // Bounce off edges
-          if (newX <= 0 || newX >= width) {
-            particle.speedX *= -1
-            newX = Math.max(0, Math.min(width, newX))
-          }
-          if (newY <= 0 || newY >= height) {
-            particle.speedY *= -1
-            newY = Math.max(0, Math.min(height, newY))
-          }
-
-          return {
-            ...particle,
-            x: newX,
-            y: newY,
-          }
+    const interval = setInterval(() => {
+      setParticles((prev) =>
+        prev.map((p) => {
+          const width = typeof window !== "undefined" ? window.innerWidth : w
+          const height = typeof window !== "undefined" ? window.innerHeight : h
+          let nx = p.x + p.speedX
+          let ny = p.y + p.speedY
+          if (nx <= 0 || nx >= width) (nx = Math.max(0, Math.min(width, nx))), (p.speedX *= -1)
+          if (ny <= 0 || ny >= height) (ny = Math.max(0, Math.min(height, ny))), (p.speedY *= -1)
+          return { ...p, x: nx, y: ny }
         }),
       )
-    }
+    }, 50)
 
-    const interval = setInterval(animateParticles, 50)
     return () => clearInterval(interval)
   }, [])
 
@@ -85,7 +70,6 @@ export function FloatingParticles() {
             opacity: particle.opacity,
             filter: "blur(1px)",
             transition: "all 0.05s linear",
-            pointerEvents: "none",
           }}
         />
       ))}

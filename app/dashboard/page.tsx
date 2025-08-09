@@ -14,14 +14,11 @@ import { GameCard } from "@/components/game-card"
 import { StatsCard } from "@/components/stats-card"
 import { motion } from "framer-motion"
 
+type UserLite = { id: string; email?: string } | null
+
 export default function DashboardPage() {
-  const [user, setUser] = useState(null)
-  const [stats, setStats] = useState({
-    totalSubjects: 0,
-    totalCards: 0,
-    totalGames: 0,
-    bestScore: 0,
-  })
+  const [user, setUser] = useState<UserLite>(null)
+  const [stats, setStats] = useState({ totalSubjects: 0, totalCards: 0, totalGames: 0, bestScore: 0 })
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { toast } = useToast()
@@ -41,10 +38,7 @@ export default function DashboardPage() {
   const loadStats = () => {
     const subjects = getStorageData("memory-cards-subjects", [])
     const cards = getStorageData("memory-cards-cards", [])
-    const userStats = getStorageData("memory-cards-user-stats", {
-      total_games: 0,
-      total_score: 0,
-    })
+    const userStats = getStorageData("memory-cards-user-stats", { total_games: 0, total_score: 0 })
 
     setStats({
       totalSubjects: subjects.length,
@@ -56,10 +50,7 @@ export default function DashboardPage() {
 
   const handleSignOut = () => {
     setStorageData("memory-cards-user", null)
-    toast({
-      title: "Logout realizado com sucesso!",
-      description: "Até logo!",
-    })
+    toast({ title: "Logout realizado com sucesso!", description: "Até logo!" })
     router.push("/")
   }
 
@@ -135,7 +126,6 @@ export default function DashboardPage() {
           <p className="text-muted-foreground text-lg">Gerencie seus cards e acompanhe seu progresso</p>
         </motion.div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             title="Assuntos"
@@ -171,7 +161,6 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Link href="/cards">
             <GameCard
@@ -183,7 +172,6 @@ export default function DashboardPage() {
               delay={0}
             />
           </Link>
-
           <Link href="/game">
             <GameCard
               title="Iniciar Jogo"
@@ -194,7 +182,6 @@ export default function DashboardPage() {
               delay={0.1}
             />
           </Link>
-
           <Link href="/rankings">
             <GameCard
               title="Rankings"
@@ -214,7 +201,7 @@ export default function DashboardPage() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="relative"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl blur-xl" />
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl blur-xl pointer-events-none" />
             <div className="relative bg-gradient-to-br from-white/80 to-white/40 dark:from-gray-800/80 dark:to-gray-900/40 backdrop-blur-sm border-2 border-dashed border-primary/30 rounded-2xl p-8 text-center">
               <motion.div
                 animate={{ y: [0, -10, 0] }}

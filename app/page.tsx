@@ -12,7 +12,6 @@ import { AnimatedBackground } from "@/components/animated-background"
 import { motion } from "framer-motion"
 
 export default function HomePage() {
-  const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -64,7 +63,7 @@ export default function HomePage() {
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
-                className="absolute inset-0 rounded-full bg-primary/20 blur-xl"
+                className="absolute inset-0 rounded-full bg-primary/20 blur-xl pointer-events-none"
               />
             </motion.div>
             <motion.h1
@@ -143,7 +142,7 @@ export default function HomePage() {
                   className="group relative z-10"
                 >
                   <Card className="relative overflow-hidden bg-gradient-to-br from-white/80 to-white/40 dark:from-gray-800/80 dark:to-gray-900/40 backdrop-blur-sm border-2 hover:border-primary/50 transition-all duration-300">
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
                     <CardContent className="p-6 text-center relative">
                       <motion.div
                         whileHover={{ rotate: 360 }}
@@ -167,7 +166,7 @@ export default function HomePage() {
               className="relative z-10"
             >
               <Card className="relative overflow-hidden bg-gradient-to-br from-white/80 to-white/40 dark:from-gray-800/80 dark:to-gray-900/40 backdrop-blur-sm border-2 hover:border-primary/30 transition-all duration-300">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 pointer-events-none" />
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Target className="h-6 w-6 text-primary" />
