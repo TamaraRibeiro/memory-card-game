@@ -14,15 +14,22 @@ import { ArrowLeft, Play, Timer, CheckCircle, XCircle, RotateCcw } from "lucide-
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-type Subject = { id: string; name: string }
-type GameCard = { id: string; title: string; content: string; difficulty: number; subject_id: string }
+interface GameCard {
+  id: string
+  title: string
+  content: string
+  difficulty: number
+  subject_id: string
+}
 
 interface GameConfig {
   totalCards: number
   timePerCard: number | null
   subjectId: string | null
 }
+
 interface GameState {
+  sessionId: string | null
   currentCardIndex: number
   cards: GameCard[]
   score: number
@@ -35,7 +42,12 @@ interface GameState {
   gameCompleted: boolean
 }
 
+type Subject = { id: string; name: string }
+
+type UserLite = { id: string; email?: string } | null
+
 export default function GamePage() {
+  const [user, setUser] = useState<UserLite>(null)
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
   const [gameStarted, setGameStarted] = useState(false)
@@ -44,6 +56,7 @@ export default function GamePage() {
 
   const [config, setConfig] = useState<GameConfig>({ totalCards: 10, timePerCard: null, subjectId: null })
   const [gameState, setGameState] = useState<GameState>({
+    sessionId: null,
     currentCardIndex: 0,
     cards: [],
     score: 0,
@@ -55,42 +68,64 @@ export default function GamePage() {
     isCorrect: null,
     gameCompleted: false,
   })
+
   const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    ;(async () => {
-      const me = await fetch("/api/auth/me")
-      if (!me.ok) {
-        router.push("/")
-        return
-      }
-      const subs = await fetch("/api/subjects", { cache: "no-store" }).then((r) => r.json())
-      setSubjects(subs)
-      setLoading(false)
-    })()
+    const currentUser =
+      typeof window !== "undefined" ? JSON.parse(localStorage.getItem("memory-cards-user") || "null") : null
+    if (!currentUser) {
+      router.push("/")
+      return
+    }
+    setUser(currentUser)
+    loadSubjects(currentUser.id)
   }, [router])
 
   useEffect(() => {
     if (gameState.timeLeft !== null && gameState.timeLeft > 0 && !gameState.showResult) {
-      const newTimer = setTimeout(() => setGameState((prev) => ({ ...prev, timeLeft: (prev.timeLeft ?? 0) - 1 })), 1000)
+      const newTimer = setTimeout(() => {
+        setGameState((prev) => ({ ...prev, timeLeft: prev.timeLeft! - 1 }))
+      }, 1000)
       setTimer(newTimer)
     } else if (gameState.timeLeft === 0 && !gameState.showResult) {
       handleTimeUp()
     }
+
     return () => {
       if (timer) clearTimeout(timer)
     }
   }, [gameState.timeLeft, gameState.showResult]) // eslint-disable-line
 
-  const startGame = async () => {
+  const loadSubjects = async (userId: string) => {
     try {
-      const allCards: GameCard[] = await fetch(
-        `/api/cards${config.subjectId ? `?subjectId=${config.subjectId}` : ""}`,
-        {
-          cache: "no-store",
-        },
-      ).then((r) => r.json())
-      if (!allCards || allCards.length === 0) {
+      const res = await fetch(`/api/subjects?userId=${encodeURIComponent(userId)}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Erro ao carregar assuntos")
+      setSubjects(data.subjects.map((s: any) => ({ id: s.id, name: s.name })))
+    } catch (error) {
+      console.error(error)
+      toast({ title: "Erro ao carregar assuntos", description: "Tente novamente mais tarde.", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const startGame = async () => {
+    if (!user) return
+    try {
+      const res = await fetch("/api/game/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          totalCards: config.totalCards,
+          subjectId: config.subjectId,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Erro ao iniciar jogo")
+      if (!data.cards || data.cards.length === 0) {
         toast({
           title: "Nenhum card encontrado",
           description: "Crie alguns cards antes de iniciar o jogo.",
@@ -98,11 +133,11 @@ export default function GamePage() {
         })
         return
       }
-      const shuffledCards = allCards.sort(() => Math.random() - 0.5)
-      const gameCards = shuffledCards.slice(0, Math.min(config.totalCards, allCards.length))
+      const sessionId = `session-${Date.now()}`
       setGameState({
+        sessionId,
         currentCardIndex: 0,
-        cards: gameCards,
+        cards: data.cards,
         score: 0,
         correctAnswers: 0,
         wrongAnswers: 0,
@@ -114,21 +149,27 @@ export default function GamePage() {
       })
       setGameStarted(true)
       toast({ title: "Jogo iniciado! Boa sorte!" })
-    } catch {
+    } catch (error) {
+      console.error(error)
       toast({ title: "Erro ao iniciar jogo", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
-  const handleTimeUp = () => checkAnswer(true)
+  const handleTimeUp = () => {
+    checkAnswer(true)
+  }
 
   const checkAnswer = (timeUp = false) => {
     const currentCard = gameState.cards[gameState.currentCardIndex]
     const answer = gameState.userAnswer.toLowerCase().trim()
     const correctAnswer = currentCard.content.toLowerCase()
+
     const isCorrect =
       !timeUp &&
       (correctAnswer.includes(answer) || answer.includes(correctAnswer) || similarity(answer, correctAnswer) > 0.6)
+
     const points = isCorrect ? currentCard.difficulty * 10 : 0
+
     setGameState((prev) => ({
       ...prev,
       score: prev.score + points,
@@ -137,13 +178,15 @@ export default function GamePage() {
       showResult: true,
       isCorrect,
     }))
+
     if (timer) clearTimeout(timer)
   }
 
   const nextCard = () => {
     const nextIndex = gameState.currentCardIndex + 1
-    if (nextIndex >= gameState.cards.length) completeGame()
-    else
+    if (nextIndex >= gameState.cards.length) {
+      completeGame()
+    } else {
       setGameState((prev) => ({
         ...prev,
         currentCardIndex: nextIndex,
@@ -152,20 +195,19 @@ export default function GamePage() {
         isCorrect: null,
         timeLeft: config.timePerCard,
       }))
+    }
   }
 
   const completeGame = async () => {
     try {
-      await fetch("/api/game/complete", {
+      await fetch("/api/stats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: user!.id,
           score: gameState.score,
           correctAnswers: gameState.correctAnswers,
           wrongAnswers: gameState.wrongAnswers,
-          totalCards: gameState.cards.length,
-          subjectId: config.subjectId,
-          timePerCard: config.timePerCard,
         }),
       })
       setGameState((prev) => ({ ...prev, gameCompleted: true }))
@@ -173,7 +215,8 @@ export default function GamePage() {
         title: "Jogo concluído!",
         description: `Você acertou ${gameState.correctAnswers} de ${gameState.cards.length} cards!`,
       })
-    } catch {
+    } catch (error) {
+      console.error(error)
       toast({
         title: "Erro ao finalizar jogo",
         description: "Mas seus resultados foram salvos.",
@@ -185,6 +228,7 @@ export default function GamePage() {
   const resetGame = () => {
     setGameStarted(false)
     setGameState({
+      sessionId: null,
       currentCardIndex: 0,
       cards: [],
       score: 0,
@@ -205,6 +249,7 @@ export default function GamePage() {
     const editDistance = levenshteinDistance(longer, shorter)
     return longer.length === 0 ? 0 : (longer.length - editDistance) / longer.length
   }
+
   const levenshteinDistance = (str1: string, str2: string) => {
     const matrix: number[][] = []
     for (let i = 0; i <= str2.length; i++) matrix[i] = [i]
@@ -275,7 +320,7 @@ export default function GamePage() {
                 <div>
                   <Label htmlFor="total-cards">Número de Cards</Label>
                   <Select
-                    value={String(config.totalCards)}
+                    value={config.totalCards.toString()}
                     onValueChange={(value) => setConfig({ ...config, totalCards: Number.parseInt(value) })}
                   >
                     <SelectTrigger>
@@ -446,7 +491,7 @@ export default function GamePage() {
                         </div>
                         {gameState.isCorrect && (
                           <div className="text-green-700">
-                            <strong>Pontos ganhos:</strong> {(getCurrentCard()?.difficulty ?? 0) * 10}
+                            <strong>Pontos ganhos:</strong> {getCurrentCard()?.difficulty! * 10}
                           </div>
                         )}
                       </div>

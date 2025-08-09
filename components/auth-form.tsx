@@ -13,47 +13,54 @@ import { Loader2 } from "lucide-react"
 
 export function AuthForm() {
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("") // mantido apenas para UI
+  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const upsertUser = async (mode: "login" | "signup") => {
     setLoading(true)
     try {
-      const res = await fetch("/api/auth/sign-in", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, password }),
       })
-      if (!res.ok) throw new Error("Falha no login")
-      toast({ title: "Login realizado com sucesso!", description: "Redirecionando para o dashboard..." })
-      router.push("/dashboard")
-    } catch {
-      toast({ title: "Erro no login", description: "Tente novamente.", variant: "destructive" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Falha de autenticação")
+      localStorage.setItem("memory-cards-user", JSON.stringify({ id: data.user.id, email: data.user.email }))
+      toast({
+        title: mode === "login" ? "Login realizado com sucesso!" : "Cadastro realizado!",
+        description: mode === "login" ? "Redirecionando para o dashboard..." : "Você já pode fazer login.",
+      })
+      if (mode === "login") router.push("/dashboard")
+    } catch (e: any) {
+      toast({ title: "Erro", description: e?.message || "Tente novamente.", variant: "destructive" })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    try {
-      // Mesmo endpoint (upsert por email)
-      const res = await fetch("/api/auth/sign-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      })
-      if (!res.ok) throw new Error("Falha no cadastro")
-      toast({ title: "Cadastro realizado!", description: "Você já pode fazer login com suas credenciais." })
-    } catch {
-      toast({ title: "Erro no cadastro", description: "Tente novamente.", variant: "destructive" })
-    } finally {
-      setLoading(false)
+    if (!email || !password) {
+      toast({ title: "Erro no login", description: "Preencha todos os campos", variant: "destructive" })
+      return
     }
+    upsertUser("login")
+  }
+
+  const handleSignUp = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email || password.length < 6) {
+      toast({
+        title: "Erro no cadastro",
+        description: "Verifique se a senha tem pelo menos 6 caracteres",
+        variant: "destructive",
+      })
+      return
+    }
+    upsertUser("signup")
   }
 
   return (
@@ -88,9 +95,10 @@ export function AuthForm() {
                   <Input
                     id="signin-password"
                     type="password"
-                    placeholder="Sua senha (não utilizada)"
+                    placeholder="Sua senha"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    required
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
@@ -118,9 +126,10 @@ export function AuthForm() {
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="Mínimo 6 caracteres (não utilizada)"
+                    placeholder="Mínimo 6 caracteres"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    required
                     minLength={6}
                   />
                 </div>

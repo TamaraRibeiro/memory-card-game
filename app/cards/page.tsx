@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -24,17 +23,32 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-type Subject = { id: string; name: string; description: string | null }
+type UserLite = { id: string; email?: string } | null
+
+type Subject = {
+  id: string
+  name: string
+  description: string | null
+  user_id: string
+  created_at: string
+  updated_at: string
+  card_count?: number
+}
+
 type CardItem = {
   id: string
   title: string
   content: string
   difficulty: number
   subject_id: string
+  user_id: string
+  created_at: string
+  updated_at: string
   subject_name?: string
 }
 
 export default function CardsPage() {
+  const [user, setUser] = useState<UserLite>(null)
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [cards, setCards] = useState<CardItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -49,85 +63,113 @@ export default function CardsPage() {
   const [cardForm, setCardForm] = useState({ title: "", content: "", difficulty: 1, subject_id: "" })
 
   useEffect(() => {
-    ;(async () => {
-      const me = await fetch("/api/auth/me")
-      if (!me.ok) {
-        router.push("/")
-        return
-      }
-      const [subs, crds] = await Promise.all([
-        fetch("/api/subjects", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/cards", { cache: "no-store" }).then((r) => r.json()),
-      ])
-      setSubjects(subs)
-      setCards(crds)
-      setLoading(false)
-    })()
+    const currentUser =
+      typeof window !== "undefined" ? JSON.parse(localStorage.getItem("memory-cards-user") || "null") : null
+    if (!currentUser) {
+      router.push("/")
+      return
+    }
+    setUser(currentUser)
+    void loadData(currentUser.id)
   }, [router])
 
-  const reload = async () => {
-    const [subs, crds] = await Promise.all([
-      fetch("/api/subjects", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/cards", { cache: "no-store" }).then((r) => r.json()),
-    ])
-    setSubjects(subs)
-    setCards(crds)
+  const loadData = async (userId: string) => {
+    try {
+      const [subRes, cardRes] = await Promise.all([
+        fetch(`/api/subjects?userId=${encodeURIComponent(userId)}`),
+        fetch(`/api/cards?userId=${encodeURIComponent(userId)}`),
+      ])
+      const subData = await subRes.json()
+      const cardData = await cardRes.json()
+      if (!subRes.ok) throw new Error(subData.error || "Erro ao carregar assuntos")
+      if (!cardRes.ok) throw new Error(cardData.error || "Erro ao carregar cards")
+      setSubjects(subData.subjects)
+      setCards(cardData.cards)
+    } catch (error) {
+      console.error(error)
+      toast({ title: "Erro ao carregar dados", description: "Tente novamente mais tarde.", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSubjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!user) return
     try {
       if (editingSubject) {
         const res = await fetch(`/api/subjects/${editingSubject.id}`, {
-          method: "PATCH",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: subjectForm.name, description: subjectForm.description }),
+          body: JSON.stringify({ name: subjectForm.name, description: subjectForm.description || null }),
         })
-        if (!res.ok) throw new Error()
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || "Erro ao atualizar assunto")
         toast({ title: "Assunto atualizado com sucesso!" })
       } else {
         const res = await fetch("/api/subjects", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(subjectForm),
+          body: JSON.stringify({
+            name: subjectForm.name,
+            description: subjectForm.description || null,
+            userId: user.id,
+          }),
         })
-        if (!res.ok) throw new Error()
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || "Erro ao criar assunto")
         toast({ title: "Assunto criado com sucesso!" })
       }
       setSubjectForm({ name: "", description: "" })
       setEditingSubject(null)
       setShowSubjectDialog(false)
-      await reload()
-    } catch {
+      await loadData(user.id)
+    } catch (error) {
+      console.error(error)
       toast({ title: "Erro ao salvar assunto", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
   const handleCardSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!user) return
     try {
       if (editingCard) {
         const res = await fetch(`/api/cards/${editingCard.id}`, {
-          method: "PATCH",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cardForm),
+          body: JSON.stringify({
+            title: cardForm.title,
+            content: cardForm.content,
+            difficulty: cardForm.difficulty,
+            subject_id: cardForm.subject_id,
+          }),
         })
-        if (!res.ok) throw new Error()
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || "Erro ao atualizar card")
         toast({ title: "Card atualizado com sucesso!" })
       } else {
         const res = await fetch("/api/cards", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cardForm),
+          body: JSON.stringify({
+            title: cardForm.title,
+            content: cardForm.content,
+            difficulty: cardForm.difficulty,
+            subject_id: cardForm.subject_id,
+            user_id: user.id,
+          }),
         })
-        if (!res.ok) throw new Error()
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || "Erro ao criar card")
         toast({ title: "Card criado com sucesso!" })
       }
       setCardForm({ title: "", content: "", difficulty: 1, subject_id: "" })
       setEditingCard(null)
       setShowCardDialog(false)
-      await reload()
-    } catch {
+      await loadData(user.id)
+    } catch (error) {
+      console.error(error)
       toast({ title: "Erro ao salvar card", description: "Tente novamente.", variant: "destructive" })
     }
   }
@@ -136,10 +178,12 @@ export default function CardsPage() {
     if (!confirm("Tem certeza? Todos os cards deste assunto serão excluídos.")) return
     try {
       const res = await fetch(`/api/subjects/${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error()
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Erro ao excluir assunto")
       toast({ title: "Assunto excluído com sucesso!" })
-      await reload()
-    } catch {
+      await loadData(user!.id)
+    } catch (error) {
+      console.error(error)
       toast({ title: "Erro ao excluir assunto", description: "Tente novamente.", variant: "destructive" })
     }
   }
@@ -148,10 +192,12 @@ export default function CardsPage() {
     if (!confirm("Tem certeza que deseja excluir este card?")) return
     try {
       const res = await fetch(`/api/cards/${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error()
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Erro ao excluir card")
       toast({ title: "Card excluído com sucesso!" })
-      await reload()
-    } catch {
+      await loadData(user!.id)
+    } catch (error) {
+      console.error(error)
       toast({ title: "Erro ao excluir card", description: "Tente novamente.", variant: "destructive" })
     }
   }
@@ -337,7 +383,7 @@ export default function CardsPage() {
                   <div>
                     <Label htmlFor="card-difficulty">Dificuldade</Label>
                     <Select
-                      value={String(cardForm.difficulty)}
+                      value={cardForm.difficulty.toString()}
                       onValueChange={(value) => setCardForm({ ...cardForm, difficulty: Number.parseInt(value) })}
                     >
                       <SelectTrigger>
@@ -397,9 +443,7 @@ export default function CardsPage() {
                     {subject.description && <CardDescription>{subject.description}</CardDescription>}
                   </CardHeader>
                   <CardContent>
-                    <Badge variant="secondary">
-                      {cards.filter((card) => card.subject_id === subject.id).length} cards
-                    </Badge>
+                    <Badge variant="secondary">{subject.card_count ?? 0} cards</Badge>
                   </CardContent>
                 </Card>
               ))}

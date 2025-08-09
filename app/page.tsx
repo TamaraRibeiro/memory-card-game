@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { AuthForm } from "@/components/auth-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Brain, BookOpen, Trophy, Timer, Sparkles, Zap, Target } from "lucide-react"
+import { getStorageData, initializeData } from "@/lib/mock-data"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { FloatingParticles } from "@/components/floating-particles"
 import { AnimatedBackground } from "@/components/animated-background"
@@ -15,17 +16,13 @@ export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
-    ;(async () => {
-      const res = await fetch("/api/auth/me", { cache: "no-store" })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.user) {
-          router.push("/dashboard")
-          return
-        }
-      }
+    initializeData()
+    const currentUser = getStorageData("memory-cards-user", null)
+    if (currentUser) {
+      router.push("/dashboard")
+    } else {
       setLoading(false)
-    })()
+    }
   }, [router])
 
   if (loading) {
@@ -99,7 +96,6 @@ export default function HomePage() {
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-12 max-w-6xl mx-auto">
-          {/* left marketing content omitted for brevity (unchanged) */}
           <div className="space-y-8 relative z-10">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
@@ -148,11 +144,13 @@ export default function HomePage() {
                   <Card className="relative overflow-hidden bg-gradient-to-br from-white/80 to-white/40 dark:from-gray-800/80 dark:to-gray-900/40 backdrop-blur-sm border-2 hover:border-primary/50 transition-all duration-300">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
                     <CardContent className="p-6 text-center relative">
-                      <div
+                      <motion.div
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.6 }}
                         className={`h-12 w-12 mx-auto mb-3 rounded-xl bg-gradient-to-r ${item.color} p-3 text-white shadow-lg`}
                       >
                         <item.icon className="h-6 w-6" />
-                      </div>
+                      </motion.div>
                       <h3 className="font-bold text-lg mb-1">{item.title}</h3>
                       <p className="text-sm text-muted-foreground">{item.desc}</p>
                     </CardContent>
@@ -165,6 +163,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
+              className="relative z-10"
             >
               <Card className="relative overflow-hidden bg-gradient-to-br from-white/80 to-white/40 dark:from-gray-800/80 dark:to-gray-900/40 backdrop-blur-sm border-2 hover:border-primary/30 transition-all duration-300">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 pointer-events-none" />
@@ -189,17 +188,27 @@ export default function HomePage() {
                     },
                     { step: "3", title: "Treine e Compete", desc: "Complete os cards e suba no ranking global" },
                   ].map((item, index) => (
-                    <div key={index} className="flex items-start space-x-4 group">
-                      <div className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
+                      className="flex items-start space-x-4 group"
+                    >
+                      <motion.div
+                        whileHover={{ scale: 1.1, rotate: 360 }}
+                        transition={{ duration: 0.3 }}
+                        className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold shadow-lg"
+                      >
                         {item.step}
-                      </div>
+                      </motion.div>
                       <div className="flex-1">
                         <h4 className="font-semibold text-lg group-hover:text-primary transition-colors">
                           {item.title}
                         </h4>
                         <p className="text-sm text-muted-foreground mt-1">{item.desc}</p>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </CardContent>
               </Card>

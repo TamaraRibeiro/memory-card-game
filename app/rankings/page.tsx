@@ -11,7 +11,22 @@ import { ArrowLeft, Trophy, Medal, Award, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-type PersonalStats = {
+interface PersonalStats {
+  id?: string | null
+  user_id: string
+  total_games: number
+  total_correct: number
+  total_wrong: number
+  best_streak: number
+  total_score: number
+  updated_at: string
+  accuracy: number
+  averageScore: number
+  rank: number
+}
+
+interface GlobalStat {
+  id: string
   user_id: string
   total_games: number
   total_correct: number
@@ -20,53 +35,68 @@ type PersonalStats = {
   total_score: number
   updated_at: string
   email?: string
+  rank: number
   accuracy: number
   averageScore: number
-  rank: number
 }
 
-type GlobalStat = {
-  user_id: string
-  email: string
-  total_games: number
-  total_correct: number
-  total_wrong: number
-  best_streak: number
-  total_score: number
-  updated_at: string
-  rank: number
-  accuracy: number
-  averageScore: number
-}
+type UserLite = { id: string; email?: string } | null
 
 export default function RankingsPage() {
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
+  const [user, setUser] = useState<UserLite>(null)
   const [globalRankings, setGlobalRankings] = useState<GlobalStat[]>([])
   const [personalStats, setPersonalStats] = useState<PersonalStats | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
-    ;(async () => {
-      const me = await fetch("/api/auth/me", { cache: "no-store" }).then((r) => r.json())
-      if (!me?.user) {
-        router.push("/")
-        return
-      }
-      setUser(me.user)
-      const [global, personal] = await Promise.all([
-        fetch("/api/rankings", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/stats", { cache: "no-store" }).then((r) => r.json()),
-      ])
-      const totalAnswers = (personal.total_correct ?? 0) + (personal.total_wrong ?? 0)
-      const accuracy = totalAnswers > 0 ? (personal.total_correct / totalAnswers) * 100 : 0
-      const averageScore = (personal.total_games ?? 0) > 0 ? personal.total_score / personal.total_games : 0
-      const rank = (global as GlobalStat[]).findIndex((g) => g.user_id === me.user.id) + 1
-      setGlobalRankings(global)
-      setPersonalStats({ ...personal, accuracy, averageScore, rank })
-      setLoading(false)
-    })()
+    const currentUser =
+      typeof window !== "undefined" ? JSON.parse(localStorage.getItem("memory-cards-user") || "null") : null
+    if (!currentUser) {
+      router.push("/")
+      return
+    }
+    setUser(currentUser)
+    void loadRankings(currentUser.id)
   }, [router])
+
+  const loadRankings = async (userId: string) => {
+    try {
+      const [rankRes, statsRes] = await Promise.all([
+        fetch("/api/rankings"),
+        fetch(`/api/stats?userId=${encodeURIComponent(userId)}`),
+      ])
+      const rankData = await rankRes.json()
+      const statsData = await statsRes.json()
+      if (!rankRes.ok) throw new Error(rankData.error || "Erro ao carregar ranking")
+      if (!statsRes.ok) throw new Error(statsData.error || "Erro ao carregar estatísticas")
+
+      const processedGlobal: GlobalStat[] = (rankData.rankings as any[]).map((stat, index) => ({
+        ...stat,
+        rank: index + 1,
+        accuracy: stat.total_games > 0 ? (stat.total_correct / (stat.total_correct + stat.total_wrong)) * 100 : 0,
+        averageScore: stat.total_games > 0 ? stat.total_score / stat.total_games : 0,
+      }))
+
+      setGlobalRankings(processedGlobal)
+
+      if (statsData.stats) {
+        const s = statsData.stats
+        const userRank = processedGlobal.findIndex((stat) => stat.user_id === userId) + 1
+        const personalWithRank: PersonalStats = {
+          ...s,
+          accuracy: s.total_games > 0 ? (s.total_correct / (s.total_correct + s.total_wrong)) * 100 : 0,
+          averageScore: s.total_games > 0 ? s.total_score / s.total_games : 0,
+          rank: userRank || 0,
+        }
+        setPersonalStats(personalWithRank)
+      }
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -248,8 +278,10 @@ export default function RankingsPage() {
                   <div className="space-y-4">
                     {globalRankings.map((stat) => (
                       <div
-                        key={stat.user_id}
-                        className={`flex items-center justify-between p-4 rounded-lg border ${stat.user_id === user?.id ? "bg-primary/5 border-primary/20" : "bg-card"}`}
+                        key={stat.id}
+                        className={`flex items-center justify-between p-4 rounded-lg border ${
+                          stat.user_id === user?.id ? "bg-primary/5 border-primary/20" : "bg-card"
+                        }`}
                       >
                         <div className="flex items-center space-x-4">
                           <div className="flex items-center justify-center w-12 h-12">{getRankIcon(stat.rank)}</div>

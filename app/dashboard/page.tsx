@@ -13,39 +13,46 @@ import { GameCard } from "@/components/game-card"
 import { StatsCard } from "@/components/stats-card"
 import { motion } from "framer-motion"
 
+type UserLite = { id: string; email?: string } | null
+
 export default function DashboardPage() {
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
+  const [user, setUser] = useState<UserLite>(null)
   const [stats, setStats] = useState({ totalSubjects: 0, totalCards: 0, totalGames: 0, bestScore: 0 })
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { toast } = useToast()
 
   useEffect(() => {
-    ;(async () => {
-      const me = await fetch("/api/auth/me", { cache: "no-store" })
-      if (!me.ok) {
-        router.push("/")
-        return
-      }
-      const meJson = await me.json()
-      if (!meJson.user) {
-        router.push("/")
-        return
-      }
-      setUser(meJson.user)
-      const ov = await fetch("/api/overview", { cache: "no-store" }).then((r) => r.json())
-      setStats({
-        totalSubjects: ov.totalSubjects,
-        totalCards: ov.totalCards,
-        totalGames: ov.totalGames,
-        bestScore: ov.bestScore,
-      })
-      setLoading(false)
-    })()
+    const currentUser =
+      typeof window !== "undefined" ? JSON.parse(localStorage.getItem("memory-cards-user") || "null") : null
+    if (!currentUser) {
+      router.push("/")
+      return
+    }
+    setUser(currentUser)
+    loadStats(currentUser.id)
   }, [router])
 
-  const handleSignOut = async () => {
-    await fetch("/api/auth/sign-out", { method: "POST" })
+  const loadStats = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/dashboard?userId=${encodeURIComponent(userId)}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Erro ao carregar resumo")
+      setStats({
+        totalSubjects: data.totalSubjects,
+        totalCards: data.totalCards,
+        totalGames: data.totalGames,
+        bestScore: data.totalScore,
+      })
+    } catch (e) {
+      toast({ title: "Erro", description: "Falha ao carregar dados do dashboard.", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSignOut = () => {
+    localStorage.removeItem("memory-cards-user")
     toast({ title: "Logout realizado com sucesso!", description: "Até logo!" })
     router.push("/")
   }
@@ -87,10 +94,15 @@ export default function DashboardPage() {
           </motion.div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            <div className="flex items-center space-x-2">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="flex items-center space-x-2"
+            >
               <Star className="h-4 w-4 text-yellow-500" />
               <span className="text-sm text-muted-foreground">Olá, {user?.email}</span>
-            </div>
+            </motion.div>
             <Button
               variant="outline"
               size="sm"
@@ -105,12 +117,17 @@ export default function DashboardPage() {
       </header>
 
       <main className="relative z-10 container mx-auto px-4 py-8">
-        <div className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
           <h2 className="text-4xl font-bold mb-2 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
             Dashboard
           </h2>
           <p className="text-muted-foreground text-lg">Gerencie seus cards e acompanhe seu progresso</p>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
@@ -181,12 +198,21 @@ export default function DashboardPage() {
         </div>
 
         {stats.totalCards === 0 && (
-          <div className="relative">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="relative"
+          >
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl blur-xl pointer-events-none" />
             <div className="relative bg-gradient-to-br from-white/80 to-white/40 dark:from-gray-800/80 dark:to-gray-900/40 backdrop-blur-sm border-2 border-dashed border-primary/30 rounded-2xl p-8 text-center">
-              <div className="mb-4">
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+                className="mb-4"
+              >
                 <Target className="h-16 w-16 text-primary mx-auto" />
-              </div>
+              </motion.div>
               <h3 className="text-2xl font-bold mb-2">Comece criando seus primeiros cards!</h3>
               <p className="text-muted-foreground mb-6 text-lg">
                 Você ainda não tem nenhum card. Crie alguns para começar a treinar.
@@ -198,7 +224,7 @@ export default function DashboardPage() {
                 </Button>
               </Link>
             </div>
-          </div>
+          </motion.div>
         )}
       </main>
     </div>
