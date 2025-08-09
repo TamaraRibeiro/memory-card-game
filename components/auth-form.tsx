@@ -10,45 +10,50 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from "lucide-react"
-import { setStorageData, mockUser } from "@/lib/mock-data"
 
 export function AuthForm() {
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [password, setPassword] = useState("") // mantido apenas para UI
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setTimeout(() => {
-      if (email && password) {
-        setStorageData("memory-cards-user", { ...mockUser, email })
-        toast({ title: "Login realizado com sucesso!", description: "Redirecionando para o dashboard..." })
-        router.push("/dashboard")
-      } else {
-        toast({ title: "Erro no login", description: "Preencha todos os campos", variant: "destructive" })
-      }
+    try {
+      const res = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) throw new Error("Falha no login")
+      toast({ title: "Login realizado com sucesso!", description: "Redirecionando para o dashboard..." })
+      router.push("/dashboard")
+    } catch {
+      toast({ title: "Erro no login", description: "Tente novamente.", variant: "destructive" })
+    } finally {
       setLoading(false)
-    }, 800)
+    }
   }
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setTimeout(() => {
-      if (email && password.length >= 6) {
-        toast({ title: "Cadastro realizado!", description: "Você já pode fazer login com suas credenciais." })
-      } else {
-        toast({
-          title: "Erro no cadastro",
-          description: "Verifique se a senha tem pelo menos 6 caracteres",
-          variant: "destructive",
-        })
-      }
+    try {
+      // Mesmo endpoint (upsert por email)
+      const res = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) throw new Error("Falha no cadastro")
+      toast({ title: "Cadastro realizado!", description: "Você já pode fazer login com suas credenciais." })
+    } catch {
+      toast({ title: "Erro no cadastro", description: "Tente novamente.", variant: "destructive" })
+    } finally {
       setLoading(false)
-    }, 800)
+    }
   }
 
   return (
@@ -83,10 +88,9 @@ export function AuthForm() {
                   <Input
                     id="signin-password"
                     type="password"
-                    placeholder="Sua senha"
+                    placeholder="Sua senha (não utilizada)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
@@ -114,10 +118,9 @@ export function AuthForm() {
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 6 caracteres (não utilizada)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
                     minLength={6}
                   />
                 </div>

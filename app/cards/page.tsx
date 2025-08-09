@@ -1,15 +1,9 @@
 "use client"
 
 import type React from "react"
+
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import {
-  getStorageData,
-  setStorageData,
-  initializeData,
-  type Subject as ImportedSubject,
-  type CardItem as ImportedCardItem,
-} from "@/lib/mock-data"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -30,17 +24,24 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-type UserLite = { id: string; email?: string } | null
+type Subject = { id: string; name: string; description: string | null }
+type CardItem = {
+  id: string
+  title: string
+  content: string
+  difficulty: number
+  subject_id: string
+  subject_name?: string
+}
 
 export default function CardsPage() {
-  const [user, setUser] = useState<UserLite>(null)
-  const [subjects, setSubjects] = useState<ImportedSubject[]>([])
-  const [cards, setCards] = useState<ImportedCardItem[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [cards, setCards] = useState<CardItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showSubjectDialog, setShowSubjectDialog] = useState(false)
   const [showCardDialog, setShowCardDialog] = useState(false)
-  const [editingSubject, setEditingSubject] = useState<ImportedSubject | null>(null)
-  const [editingCard, setEditingCard] = useState<ImportedCardItem | null>(null)
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
+  const [editingCard, setEditingCard] = useState<CardItem | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -48,155 +49,120 @@ export default function CardsPage() {
   const [cardForm, setCardForm] = useState({ title: "", content: "", difficulty: 1, subject_id: "" })
 
   useEffect(() => {
-    initializeData()
-    const currentUser = getStorageData("memory-cards-user", null)
-    if (!currentUser) {
-      router.push("/")
-      return
-    }
-    setUser(currentUser)
-    loadData()
-    setLoading(false)
+    ;(async () => {
+      const me = await fetch("/api/auth/me")
+      if (!me.ok) {
+        router.push("/")
+        return
+      }
+      const [subs, crds] = await Promise.all([
+        fetch("/api/subjects", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/cards", { cache: "no-store" }).then((r) => r.json()),
+      ])
+      setSubjects(subs)
+      setCards(crds)
+      setLoading(false)
+    })()
   }, [router])
 
-  const loadData = () => {
-    try {
-      const subjectsData = getStorageData("memory-cards-subjects", [])
-      const cardsData = getStorageData("memory-cards-cards", [])
-      const cardsWithSubjects = cardsData.map((card: ImportedCardItem) => ({
-        ...card,
-        subjects: { name: subjectsData.find((s: ImportedSubject) => s.id === card.subject_id)?.name || "Unknown" },
-      }))
-      setSubjects(subjectsData)
-      setCards(cardsWithSubjects)
-    } catch (error) {
-      console.error("Error loading data:", error)
-      toast({ title: "Erro ao carregar dados", description: "Tente novamente mais tarde.", variant: "destructive" })
-    }
+  const reload = async () => {
+    const [subs, crds] = await Promise.all([
+      fetch("/api/subjects", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/cards", { cache: "no-store" }).then((r) => r.json()),
+    ])
+    setSubjects(subs)
+    setCards(crds)
   }
 
-  const handleSubjectSubmit = (e: React.FormEvent) => {
+  const handleSubjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
     try {
-      const currentSubjects = getStorageData("memory-cards-subjects", [])
       if (editingSubject) {
-        const updatedSubjects = currentSubjects.map((subject: ImportedSubject) =>
-          subject.id === editingSubject.id
-            ? {
-                ...subject,
-                name: subjectForm.name,
-                description: subjectForm.description,
-                updated_at: new Date().toISOString(),
-              }
-            : subject,
-        )
-        setStorageData("memory-cards-subjects", updatedSubjects)
+        const res = await fetch(`/api/subjects/${editingSubject.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: subjectForm.name, description: subjectForm.description }),
+        })
+        if (!res.ok) throw new Error()
         toast({ title: "Assunto atualizado com sucesso!" })
       } else {
-        const newSubject = {
-          id: `subject-${Date.now()}`,
-          name: subjectForm.name,
-          description: subjectForm.description,
-          user_id: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-        setStorageData("memory-cards-subjects", [...currentSubjects, newSubject])
+        const res = await fetch("/api/subjects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(subjectForm),
+        })
+        if (!res.ok) throw new Error()
         toast({ title: "Assunto criado com sucesso!" })
       }
       setSubjectForm({ name: "", description: "" })
       setEditingSubject(null)
       setShowSubjectDialog(false)
-      loadData()
-    } catch (error) {
-      console.error("Error saving subject:", error)
+      await reload()
+    } catch {
       toast({ title: "Erro ao salvar assunto", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
-  const handleCardSubmit = (e: React.FormEvent) => {
+  const handleCardSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
     try {
-      const currentCards = getStorageData("memory-cards-cards", [])
       if (editingCard) {
-        const updatedCards = currentCards.map((card: ImportedCardItem) =>
-          card.id === editingCard.id
-            ? {
-                ...card,
-                title: cardForm.title,
-                content: cardForm.content,
-                difficulty: cardForm.difficulty,
-                subject_id: cardForm.subject_id,
-                updated_at: new Date().toISOString(),
-              }
-            : card,
-        )
-        setStorageData("memory-cards-cards", updatedCards)
+        const res = await fetch(`/api/cards/${editingCard.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cardForm),
+        })
+        if (!res.ok) throw new Error()
         toast({ title: "Card atualizado com sucesso!" })
       } else {
-        const newCard = {
-          id: `card-${Date.now()}`,
-          title: cardForm.title,
-          content: cardForm.content,
-          difficulty: cardForm.difficulty,
-          subject_id: cardForm.subject_id,
-          user_id: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-        setStorageData("memory-cards-cards", [...currentCards, newCard])
+        const res = await fetch("/api/cards", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cardForm),
+        })
+        if (!res.ok) throw new Error()
         toast({ title: "Card criado com sucesso!" })
       }
       setCardForm({ title: "", content: "", difficulty: 1, subject_id: "" })
       setEditingCard(null)
       setShowCardDialog(false)
-      loadData()
-    } catch (error) {
-      console.error("Error saving card:", error)
+      await reload()
+    } catch {
       toast({ title: "Erro ao salvar card", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
-  const handleDeleteSubject = (id: string) => {
+  const handleDeleteSubject = async (id: string) => {
     if (!confirm("Tem certeza? Todos os cards deste assunto serão excluídos.")) return
     try {
-      const currentSubjects = getStorageData("memory-cards-subjects", [])
-      const currentCards = getStorageData("memory-cards-cards", [])
-      const updatedSubjects = currentSubjects.filter((subject: ImportedSubject) => subject.id !== id)
-      const updatedCards = currentCards.filter((card: ImportedCardItem) => card.subject_id !== id)
-      setStorageData("memory-cards-subjects", updatedSubjects)
-      setStorageData("memory-cards-cards", updatedCards)
+      const res = await fetch(`/api/subjects/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error()
       toast({ title: "Assunto excluído com sucesso!" })
-      loadData()
-    } catch (error) {
-      console.error("Error deleting subject:", error)
+      await reload()
+    } catch {
       toast({ title: "Erro ao excluir assunto", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
-  const handleDeleteCard = (id: string) => {
+  const handleDeleteCard = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este card?")) return
     try {
-      const currentCards = getStorageData("memory-cards-cards", [])
-      const updatedCards = currentCards.filter((card: ImportedCardItem) => card.id !== id)
-      setStorageData("memory-cards-cards", updatedCards)
+      const res = await fetch(`/api/cards/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error()
       toast({ title: "Card excluído com sucesso!" })
-      loadData()
-    } catch (error) {
-      console.error("Error deleting card:", error)
+      await reload()
+    } catch {
       toast({ title: "Erro ao excluir card", description: "Tente novamente.", variant: "destructive" })
     }
   }
 
-  const openEditSubject = (subject: ImportedSubject) => {
+  const openEditSubject = (subject: Subject) => {
     setEditingSubject(subject)
     setSubjectForm({ name: subject.name, description: subject.description || "" })
     setShowSubjectDialog(true)
   }
 
-  const openEditCard = (card: ImportedCardItem) => {
+  const openEditCard = (card: CardItem) => {
     setEditingCard(card)
     setCardForm({ title: card.title, content: card.content, difficulty: card.difficulty, subject_id: card.subject_id })
     setShowCardDialog(true)
@@ -371,7 +337,7 @@ export default function CardsPage() {
                   <div>
                     <Label htmlFor="card-difficulty">Dificuldade</Label>
                     <Select
-                      value={cardForm.difficulty.toString()}
+                      value={String(cardForm.difficulty)}
                       onValueChange={(value) => setCardForm({ ...cardForm, difficulty: Number.parseInt(value) })}
                     >
                       <SelectTrigger>
@@ -484,7 +450,7 @@ export default function CardsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <Badge variant="outline">{(card as any).subjects?.name}</Badge>
+                      <Badge variant="outline">{card.subject_name}</Badge>
                       <Badge className={getDifficultyColor(card.difficulty)}>
                         {getDifficultyText(card.difficulty)}
                       </Badge>
