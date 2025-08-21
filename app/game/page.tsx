@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
+import { ArrowLeft, Play, Timer, CheckCircle, XCircle, RotateCcw, Target } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -9,17 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, Play, Timer, CheckCircle, XCircle, RotateCcw } from "lucide-react"
-import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useToast } from "@/hooks/use-toast"
 
 interface GameCard {
   id: string
   title: string
   content: string
   difficulty: number
-  subject_id: string
+  subjectName: string
 }
 
 interface GameConfig {
@@ -29,7 +30,6 @@ interface GameConfig {
 }
 
 interface GameState {
-  sessionId: string | null
   currentCardIndex: number
   cards: GameCard[]
   score: number
@@ -42,21 +42,65 @@ interface GameState {
   gameCompleted: boolean
 }
 
-type Subject = { id: string; name: string }
-
-type UserLite = { id: string; email?: string } | null
-
 export default function GamePage() {
-  const [user, setUser] = useState<UserLite>(null)
-  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [user, setUser] = useState<{ email: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [gameStarted, setGameStarted] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
-  const [config, setConfig] = useState<GameConfig>({ totalCards: 10, timePerCard: null, subjectId: null })
+  // Dados mockados
+  const subjects = [
+    { id: "1", name: "Matemática" },
+    { id: "2", name: "História" },
+    { id: "3", name: "Programação" },
+  ]
+
+  const mockCards: GameCard[] = [
+    {
+      id: "1",
+      title: "Teorema de Pitágoras",
+      content:
+        "Em um triângulo retângulo, o quadrado da hipotenusa é igual à soma dos quadrados dos catetos. A fórmula é a² + b² = c².",
+      difficulty: 2,
+      subjectName: "Matemática",
+    },
+    {
+      id: "2",
+      title: "Revolução Francesa",
+      content:
+        "A Revolução Francesa foi um período de mudança política e social radical na França que durou de 1789 a 1799. Começou com a convocação dos Estados Gerais.",
+      difficulty: 3,
+      subjectName: "História",
+    },
+    {
+      id: "3",
+      title: "React Hooks",
+      content:
+        "Hooks são funções que permitem usar estado e outras funcionalidades do React em componentes funcionais. Os mais comuns são useState e useEffect.",
+      difficulty: 3,
+      subjectName: "Programação",
+    },
+    {
+      id: "4",
+      title: "Equação do Segundo Grau",
+      content:
+        "Uma equação do segundo grau tem a forma ax² + bx + c = 0. Suas raízes podem ser encontradas usando a fórmula de Bhaskara.",
+      difficulty: 4,
+      subjectName: "Matemática",
+    },
+    {
+      id: "5",
+      title: "Segunda Guerra Mundial",
+      content:
+        "A Segunda Guerra Mundial foi um conflito militar global que durou de 1939 a 1945. Envolveu a maioria das nações do mundo.",
+      difficulty: 3,
+      subjectName: "História",
+    },
+  ]
+
+  const [config, setConfig] = useState<GameConfig>({ totalCards: 5, timePerCard: null, subjectId: null })
   const [gameState, setGameState] = useState<GameState>({
-    sessionId: null,
     currentCardIndex: 0,
     cards: [],
     score: 0,
@@ -69,17 +113,19 @@ export default function GamePage() {
     gameCompleted: false,
   })
 
-  const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
+  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const currentUser =
       typeof window !== "undefined" ? JSON.parse(localStorage.getItem("memory-cards-user") || "null") : null
+
     if (!currentUser) {
       router.push("/")
       return
     }
+
     setUser(currentUser)
-    loadSubjects(currentUser.id)
+    setLoading(false)
   }, [router])
 
   useEffect(() => {
@@ -95,64 +141,41 @@ export default function GamePage() {
     return () => {
       if (timer) clearTimeout(timer)
     }
-  }, [gameState.timeLeft, gameState.showResult]) // eslint-disable-line
+  }, [gameState.timeLeft, gameState.showResult])
 
-  const loadSubjects = async (userId: string) => {
-    try {
-      const res = await fetch(`/api/subjects?userId=${encodeURIComponent(userId)}`)
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Erro ao carregar assuntos")
-      setSubjects(data.subjects.map((s: any) => ({ id: s.id, name: s.name })))
-    } catch (error) {
-      console.error(error)
-      toast({ title: "Erro ao carregar assuntos", description: "Tente novamente mais tarde.", variant: "destructive" })
-    } finally {
-      setLoading(false)
-    }
-  }
+  const startGame = () => {
+    let selectedCards = [...mockCards]
 
-  const startGame = async () => {
-    if (!user) return
-    try {
-      const res = await fetch("/api/game/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          totalCards: config.totalCards,
-          subjectId: config.subjectId,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Erro ao iniciar jogo")
-      if (!data.cards || data.cards.length === 0) {
-        toast({
-          title: "Nenhum card encontrado",
-          description: "Crie alguns cards antes de iniciar o jogo.",
-          variant: "destructive",
-        })
-        return
-      }
-      const sessionId = `session-${Date.now()}`
-      setGameState({
-        sessionId,
-        currentCardIndex: 0,
-        cards: data.cards,
-        score: 0,
-        correctAnswers: 0,
-        wrongAnswers: 0,
-        timeLeft: config.timePerCard,
-        userAnswer: "",
-        showResult: false,
-        isCorrect: null,
-        gameCompleted: false,
-      })
-      setGameStarted(true)
-      toast({ title: "Jogo iniciado! Boa sorte!" })
-    } catch (error) {
-      console.error(error)
-      toast({ title: "Erro ao iniciar jogo", description: "Tente novamente.", variant: "destructive" })
+    if (config.subjectId) {
+      const subjectName = subjects.find((s) => s.id === config.subjectId)?.name
+      selectedCards = selectedCards.filter((card) => card.subjectName === subjectName)
     }
+
+    selectedCards = selectedCards.sort(() => Math.random() - 0.5).slice(0, config.totalCards)
+
+    if (selectedCards.length === 0) {
+      toast({
+        title: "Nenhum card encontrado",
+        description: "Crie alguns cards antes de iniciar o jogo.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setGameState({
+      currentCardIndex: 0,
+      cards: selectedCards,
+      score: 0,
+      correctAnswers: 0,
+      wrongAnswers: 0,
+      timeLeft: config.timePerCard,
+      userAnswer: "",
+      showResult: false,
+      isCorrect: null,
+      gameCompleted: false,
+    })
+    setGameStarted(true)
+    toast({ title: "Jogo iniciado! Boa sorte!" })
   }
 
   const handleTimeUp = () => {
@@ -198,37 +221,17 @@ export default function GamePage() {
     }
   }
 
-  const completeGame = async () => {
-    try {
-      await fetch("/api/stats", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user!.id,
-          score: gameState.score,
-          correctAnswers: gameState.correctAnswers,
-          wrongAnswers: gameState.wrongAnswers,
-        }),
-      })
-      setGameState((prev) => ({ ...prev, gameCompleted: true }))
-      toast({
-        title: "Jogo concluído!",
-        description: `Você acertou ${gameState.correctAnswers} de ${gameState.cards.length} cards!`,
-      })
-    } catch (error) {
-      console.error(error)
-      toast({
-        title: "Erro ao finalizar jogo",
-        description: "Mas seus resultados foram salvos.",
-        variant: "destructive",
-      })
-    }
+  const completeGame = () => {
+    setGameState((prev) => ({ ...prev, gameCompleted: true }))
+    toast({
+      title: "Jogo concluído!",
+      description: `Você acertou ${gameState.correctAnswers} de ${gameState.cards.length} cards!`,
+    })
   }
 
   const resetGame = () => {
     setGameStarted(false)
     setGameState({
-      sessionId: null,
       currentCardIndex: 0,
       cards: [],
       score: 0,
@@ -256,8 +259,11 @@ export default function GamePage() {
     for (let j = 0; j <= str1.length; j++) matrix[0][j] = j
     for (let i = 1; i <= str2.length; i++) {
       for (let j = 1; j <= str1.length; j++) {
-        if (str2.charAt(i - 1) === str1.charAt(j - 1)) matrix[i][j] = matrix[i - 1][j - 1]
-        else matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1]
+        } else {
+          matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+        }
       }
     }
     return matrix[str2.length][str1.length]
@@ -270,14 +276,19 @@ export default function GamePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+          className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full"
+        />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20">
+      {/* Header */}
+      <header className="glass border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link href="/dashboard">
@@ -308,12 +319,21 @@ export default function GamePage() {
         </div>
       </header>
 
+      {/* Conteúdo principal */}
       <main className="container mx-auto px-4 py-8">
         {!gameStarted ? (
-          <div className="max-w-2xl mx-auto">
-            <Card>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="max-w-2xl mx-auto"
+          >
+            <Card className="glass shadow-xl">
               <CardHeader>
-                <CardTitle>Configurar Jogo</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-6 w-6 text-primary" />
+                  Configurar Jogo
+                </CardTitle>
                 <CardDescription>Configure as opções do seu jogo de memory cards</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -327,11 +347,10 @@ export default function GamePage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="3">3 cards</SelectItem>
                       <SelectItem value="5">5 cards</SelectItem>
                       <SelectItem value="10">10 cards</SelectItem>
                       <SelectItem value="15">15 cards</SelectItem>
-                      <SelectItem value="20">20 cards</SelectItem>
-                      <SelectItem value="25">25 cards</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -383,12 +402,17 @@ export default function GamePage() {
                 </Button>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
         ) : gameState.gameCompleted ? (
-          <div className="max-w-2xl mx-auto">
-            <Card>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6 }}
+            className="max-w-2xl mx-auto"
+          >
+            <Card className="glass shadow-xl">
               <CardHeader className="text-center">
-                <CardTitle className="text-3xl">Jogo Concluído!</CardTitle>
+                <CardTitle className="text-3xl">🎉 Jogo Concluído!</CardTitle>
                 <CardDescription>Confira seus resultados abaixo</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -426,83 +450,113 @@ export default function GamePage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
         ) : (
           <div className="max-w-4xl mx-auto">
-            <div className="mb-6">
-              <Progress value={getProgress()} className="h-2" />
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mb-6"
+            >
+              <Progress value={getProgress()} className="h-3" />
+            </motion.div>
 
-            <Card className="mb-6">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>{getCurrentCard()?.title}</CardTitle>
-                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                    Dificuldade {getCurrentCard()?.difficulty}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-6">
-                  <p className="text-lg leading-relaxed">
-                    {getCurrentCard()?.content.substring(0, Math.floor((getCurrentCard()?.content.length || 0) * 0.4))}
-                    ...
-                  </p>
-                </div>
-
-                {!gameState.showResult ? (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="user-answer">Complete ou descreva o que se refere:</Label>
-                      <Textarea
-                        id="user-answer"
-                        value={gameState.userAnswer}
-                        onChange={(e) => setGameState({ ...gameState, userAnswer: e.target.value })}
-                        placeholder="Digite sua resposta aqui..."
-                        className="min-h-[100px]"
-                        disabled={gameState.timeLeft === 0}
-                      />
-                    </div>
-                    <Button onClick={() => checkAnswer()} className="w-full" disabled={!gameState.userAnswer.trim()}>
-                      Confirmar Resposta
-                    </Button>
+            <motion.div
+              key={gameState.currentCardIndex}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Card className="glass shadow-xl mb-6">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>{getCurrentCard()?.title}</CardTitle>
+                    <Badge className={`difficulty-${getCurrentCard()?.difficulty}`}>
+                      Dificuldade {getCurrentCard()?.difficulty}
+                    </Badge>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div
-                      className={`p-4 rounded-lg ${gameState.isCorrect ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-6">
+                    <p className="text-lg leading-relaxed">
+                      {getCurrentCard()?.content.substring(
+                        0,
+                        Math.floor((getCurrentCard()?.content.length || 0) * 0.4),
+                      )}
+                      ...
+                    </p>
+                  </div>
+
+                  {!gameState.showResult ? (
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="user-answer">Complete ou descreva o que se refere:</Label>
+                        <Textarea
+                          id="user-answer"
+                          value={gameState.userAnswer}
+                          onChange={(e) => setGameState({ ...gameState, userAnswer: e.target.value })}
+                          placeholder="Digite sua resposta aqui..."
+                          className="min-h-[100px]"
+                          disabled={gameState.timeLeft === 0}
+                        />
+                      </div>
+                      <Button onClick={() => checkAnswer()} className="w-full" disabled={!gameState.userAnswer.trim()}>
+                        Confirmar Resposta
+                      </Button>
+                    </div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="space-y-4"
                     >
-                      <div className="flex items-center mb-2">
-                        {gameState.isCorrect ? (
-                          <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-600 mr-2" />
-                        )}
-                        <span className={`font-semibold ${gameState.isCorrect ? "text-green-800" : "text-red-800"}`}>
-                          {gameState.isCorrect ? "Correto!" : "Incorreto"}
-                        </span>
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <strong>Sua resposta:</strong> {gameState.userAnswer || "Tempo esgotado"}
+                      <div
+                        className={`p-4 rounded-lg ${
+                          gameState.isCorrect
+                            ? "bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                            : "bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                        }`}
+                      >
+                        <div className="flex items-center mb-2">
+                          {gameState.isCorrect ? (
+                            <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-600 mr-2" />
+                          )}
+                          <span
+                            className={`font-semibold ${
+                              gameState.isCorrect
+                                ? "text-green-800 dark:text-green-400"
+                                : "text-red-800 dark:text-red-400"
+                            }`}
+                          >
+                            {gameState.isCorrect ? "Correto!" : "Incorreto"}
+                          </span>
                         </div>
-                        <div>
-                          <strong>Resposta completa:</strong> {getCurrentCard()?.content}
-                        </div>
-                        {gameState.isCorrect && (
-                          <div className="text-green-700">
-                            <strong>Pontos ganhos:</strong> {getCurrentCard()?.difficulty! * 10}
+                        <div className="space-y-2">
+                          <div>
+                            <strong>Sua resposta:</strong> {gameState.userAnswer || "Tempo esgotado"}
                           </div>
-                        )}
+                          <div>
+                            <strong>Resposta completa:</strong> {getCurrentCard()?.content}
+                          </div>
+                          {gameState.isCorrect && (
+                            <div className="text-green-700 dark:text-green-400">
+                              <strong>Pontos ganhos:</strong> {getCurrentCard()?.difficulty! * 10}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <Button onClick={nextCard} className="w-full">
-                      {gameState.currentCardIndex + 1 >= gameState.cards.length ? "Finalizar Jogo" : "Próximo Card"}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      <Button onClick={nextCard} className="w-full">
+                        {gameState.currentCardIndex + 1 >= gameState.cards.length ? "Finalizar Jogo" : "Próximo Card"}
+                      </Button>
+                    </motion.div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         )}
       </main>

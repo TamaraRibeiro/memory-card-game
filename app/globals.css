@@ -1,8 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -123,30 +121,7 @@
   }
 }
 
-* {
-  border-color: hsl(var(--border));
-}
-body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-}
-
-/* Animações customizadas */
-@keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
+/* Animações personalizadas */
 @keyframes float {
   0%,
   100% {
@@ -157,29 +132,42 @@ body {
   }
 }
 
-.animate-blob {
-  animation: blob 7s infinite;
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
 
-.animation-delay-2000 {
-  animation-delay: 2s;
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }
 
-.animation-delay-4000 {
-  animation-delay: 4s;
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
 }
 
-.bg-grid-pattern {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
-  background-size: 50px 50px;
-}
-
-/* Scrollbar customizada */
+/* Scrollbar personalizada */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -198,52 +186,35 @@ body {
   background: hsl(var(--primary) / 0.8);
 }
 
-.dark ::-webkit-scrollbar-track {
-  background: oklch(0.269 0 0);
+/* Efeitos de glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: oklch(0.708 0.148 258.9);
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.808 0.148 258.9);
-}
-
-/* Botão de jogo customizado */
-.btn-game {
-  background: linear-gradient(135deg, oklch(0.478 0.148 258.9) 0%, oklch(0.378 0.148 258.9) 100%);
-  box-shadow: 0 4px 15px 0 oklch(0.478 0.148 258.9 / 0.3);
-  transition: all 0.3s ease;
-}
-
-.btn-game:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px 0 oklch(0.478 0.148 258.9 / 0.4);
+.dark .glass {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Badges de dificuldade */
-.badge-difficulty-1 {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
+.difficulty-1 {
+  @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400;
 }
 
-.badge-difficulty-2 {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: white;
+.difficulty-2 {
+  @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400;
 }
 
-.badge-difficulty-3 {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
+.difficulty-3 {
+  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400;
 }
 
-.badge-difficulty-4 {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
+.difficulty-4 {
+  @apply bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400;
 }
 
-.badge-difficulty-5 {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-  color: white;
+.difficulty-5 {
+  @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
 }

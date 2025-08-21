@@ -1,8 +1,12 @@
 "use client"
 
 import type React from "react"
+
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
+import { ArrowLeft, BookOpen, Plus, Edit, Trash2, Search } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -18,40 +22,29 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, ArrowLeft, BookOpen } from "lucide-react"
-import Link from "next/link"
-import { useToast } from "@/hooks/use-toast"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useToast } from "@/hooks/use-toast"
 
-type UserLite = { id: string; email?: string } | null
-
-type Subject = {
+interface Subject {
   id: string
   name: string
-  description: string | null
-  user_id: string
-  created_at: string
-  updated_at: string
-  card_count?: number
+  description: string
+  cardCount: number
 }
 
-type CardItem = {
+interface CardItem {
   id: string
   title: string
   content: string
   difficulty: number
-  subject_id: string
-  user_id: string
-  created_at: string
-  updated_at: string
-  subject_name?: string
+  subjectId: string
+  subjectName: string
 }
 
 export default function CardsPage() {
-  const [user, setUser] = useState<UserLite>(null)
-  const [subjects, setSubjects] = useState<Subject[]>([])
-  const [cards, setCards] = useState<CardItem[]>([])
+  const [user, setUser] = useState<{ email: string } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
   const [showSubjectDialog, setShowSubjectDialog] = useState(false)
   const [showCardDialog, setShowCardDialog] = useState(false)
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
@@ -59,206 +52,156 @@ export default function CardsPage() {
   const router = useRouter()
   const { toast } = useToast()
 
+  // Dados mockados
+  const [subjects, setSubjects] = useState<Subject[]>([
+    { id: "1", name: "Matemática", description: "Conceitos fundamentais", cardCount: 8 },
+    { id: "2", name: "História", description: "Eventos importantes", cardCount: 6 },
+    { id: "3", name: "Programação", description: "Desenvolvimento de software", cardCount: 10 },
+  ])
+
+  const [cards, setCards] = useState<CardItem[]>([
+    {
+      id: "1",
+      title: "Teorema de Pitágoras",
+      content: "Em um triângulo retângulo, o quadrado da hipotenusa é igual à soma dos quadrados dos catetos.",
+      difficulty: 2,
+      subjectId: "1",
+      subjectName: "Matemática",
+    },
+    {
+      id: "2",
+      title: "Revolução Francesa",
+      content: "Período de mudança política e social radical na França (1789-1799).",
+      difficulty: 3,
+      subjectId: "2",
+      subjectName: "História",
+    },
+    {
+      id: "3",
+      title: "React Hooks",
+      content: "Funções que permitem usar estado e outras funcionalidades do React em componentes funcionais.",
+      difficulty: 3,
+      subjectId: "3",
+      subjectName: "Programação",
+    },
+  ])
+
   const [subjectForm, setSubjectForm] = useState({ name: "", description: "" })
-  const [cardForm, setCardForm] = useState({ title: "", content: "", difficulty: 1, subject_id: "" })
+  const [cardForm, setCardForm] = useState({ title: "", content: "", difficulty: 1, subjectId: "" })
 
   useEffect(() => {
     const currentUser =
       typeof window !== "undefined" ? JSON.parse(localStorage.getItem("memory-cards-user") || "null") : null
+
     if (!currentUser) {
       router.push("/")
       return
     }
+
     setUser(currentUser)
-    void loadData(currentUser.id)
+    setLoading(false)
   }, [router])
 
-  const loadData = async (userId: string) => {
-    try {
-      const [subRes, cardRes] = await Promise.all([
-        fetch(`/api/subjects?userId=${encodeURIComponent(userId)}`),
-        fetch(`/api/cards?userId=${encodeURIComponent(userId)}`),
-      ])
-      const subData = await subRes.json()
-      const cardData = await cardRes.json()
-      if (!subRes.ok) throw new Error(subData.error || "Erro ao carregar assuntos")
-      if (!cardRes.ok) throw new Error(cardData.error || "Erro ao carregar cards")
-      setSubjects(subData.subjects)
-      setCards(cardData.cards)
-    } catch (error) {
-      console.error(error)
-      toast({ title: "Erro ao carregar dados", description: "Tente novamente mais tarde.", variant: "destructive" })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSubjectSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user) return
-    try {
-      if (editingSubject) {
-        const res = await fetch(`/api/subjects/${editingSubject.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: subjectForm.name, description: subjectForm.description || null }),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Erro ao atualizar assunto")
-        toast({ title: "Assunto atualizado com sucesso!" })
-      } else {
-        const res = await fetch("/api/subjects", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: subjectForm.name,
-            description: subjectForm.description || null,
-            userId: user.id,
-          }),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Erro ao criar assunto")
-        toast({ title: "Assunto criado com sucesso!" })
-      }
-      setSubjectForm({ name: "", description: "" })
-      setEditingSubject(null)
-      setShowSubjectDialog(false)
-      await loadData(user.id)
-    } catch (error) {
-      console.error(error)
-      toast({ title: "Erro ao salvar assunto", description: "Tente novamente.", variant: "destructive" })
-    }
-  }
-
-  const handleCardSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user) return
-    try {
-      if (editingCard) {
-        const res = await fetch(`/api/cards/${editingCard.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: cardForm.title,
-            content: cardForm.content,
-            difficulty: cardForm.difficulty,
-            subject_id: cardForm.subject_id,
-          }),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Erro ao atualizar card")
-        toast({ title: "Card atualizado com sucesso!" })
-      } else {
-        const res = await fetch("/api/cards", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: cardForm.title,
-            content: cardForm.content,
-            difficulty: cardForm.difficulty,
-            subject_id: cardForm.subject_id,
-            user_id: user.id,
-          }),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Erro ao criar card")
-        toast({ title: "Card criado com sucesso!" })
-      }
-      setCardForm({ title: "", content: "", difficulty: 1, subject_id: "" })
-      setEditingCard(null)
-      setShowCardDialog(false)
-      await loadData(user.id)
-    } catch (error) {
-      console.error(error)
-      toast({ title: "Erro ao salvar card", description: "Tente novamente.", variant: "destructive" })
-    }
-  }
-
-  const handleDeleteSubject = async (id: string) => {
-    if (!confirm("Tem certeza? Todos os cards deste assunto serão excluídos.")) return
-    try {
-      const res = await fetch(`/api/subjects/${id}`, { method: "DELETE" })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Erro ao excluir assunto")
-      toast({ title: "Assunto excluído com sucesso!" })
-      await loadData(user!.id)
-    } catch (error) {
-      console.error(error)
-      toast({ title: "Erro ao excluir assunto", description: "Tente novamente.", variant: "destructive" })
-    }
-  }
-
-  const handleDeleteCard = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este card?")) return
-    try {
-      const res = await fetch(`/api/cards/${id}`, { method: "DELETE" })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Erro ao excluir card")
-      toast({ title: "Card excluído com sucesso!" })
-      await loadData(user!.id)
-    } catch (error) {
-      console.error(error)
-      toast({ title: "Erro ao excluir card", description: "Tente novamente.", variant: "destructive" })
-    }
-  }
-
-  const openEditSubject = (subject: Subject) => {
-    setEditingSubject(subject)
-    setSubjectForm({ name: subject.name, description: subject.description || "" })
-    setShowSubjectDialog(true)
-  }
-
-  const openEditCard = (card: CardItem) => {
-    setEditingCard(card)
-    setCardForm({ title: card.title, content: card.content, difficulty: card.difficulty, subject_id: card.subject_id })
-    setShowCardDialog(true)
-  }
-
-  const getDifficultyColor = (difficulty: number) => {
-    switch (difficulty) {
-      case 1:
-        return "badge-difficulty-1"
-      case 2:
-        return "badge-difficulty-2"
-      case 3:
-        return "badge-difficulty-3"
-      case 4:
-        return "badge-difficulty-4"
-      case 5:
-        return "badge-difficulty-5"
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
-    }
-  }
+  const filteredCards = cards.filter(
+    (card) =>
+      card.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      card.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      card.subjectName.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   const getDifficultyText = (difficulty: number) => {
-    switch (difficulty) {
-      case 1:
-        return "Muito Fácil"
-      case 2:
-        return "Fácil"
-      case 3:
-        return "Médio"
-      case 4:
-        return "Difícil"
-      case 5:
-        return "Muito Difícil"
-      default:
-        return "Desconhecido"
+    const levels = ["", "Muito Fácil", "Fácil", "Médio", "Difícil", "Muito Difícil"]
+    return levels[difficulty] || "Desconhecido"
+  }
+
+  const getDifficultyClass = (difficulty: number) => {
+    return `difficulty-${difficulty}`
+  }
+
+  const handleSubjectSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (editingSubject) {
+      setSubjects((prev) =>
+        prev.map((s) =>
+          s.id === editingSubject.id ? { ...s, name: subjectForm.name, description: subjectForm.description } : s,
+        ),
+      )
+      toast({ title: "Assunto atualizado com sucesso!" })
+    } else {
+      const newSubject: Subject = {
+        id: Date.now().toString(),
+        name: subjectForm.name,
+        description: subjectForm.description,
+        cardCount: 0,
+      }
+      setSubjects((prev) => [...prev, newSubject])
+      toast({ title: "Assunto criado com sucesso!" })
+    }
+    setSubjectForm({ name: "", description: "" })
+    setEditingSubject(null)
+    setShowSubjectDialog(false)
+  }
+
+  const handleCardSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const subject = subjects.find((s) => s.id === cardForm.subjectId)
+    if (!subject) return
+
+    if (editingCard) {
+      setCards((prev) =>
+        prev.map((c) => (c.id === editingCard.id ? { ...c, ...cardForm, subjectName: subject.name } : c)),
+      )
+      toast({ title: "Card atualizado com sucesso!" })
+    } else {
+      const newCard: CardItem = {
+        id: Date.now().toString(),
+        ...cardForm,
+        subjectName: subject.name,
+      }
+      setCards((prev) => [...prev, newCard])
+      setSubjects((prev) => prev.map((s) => (s.id === cardForm.subjectId ? { ...s, cardCount: s.cardCount + 1 } : s)))
+      toast({ title: "Card criado com sucesso!" })
+    }
+    setCardForm({ title: "", content: "", difficulty: 1, subjectId: "" })
+    setEditingCard(null)
+    setShowCardDialog(false)
+  }
+
+  const handleDeleteSubject = (id: string) => {
+    if (!confirm("Tem certeza? Todos os cards deste assunto serão excluídos.")) return
+    setSubjects((prev) => prev.filter((s) => s.id !== id))
+    setCards((prev) => prev.filter((c) => c.subjectId !== id))
+    toast({ title: "Assunto excluído com sucesso!" })
+  }
+
+  const handleDeleteCard = (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este card?")) return
+    const card = cards.find((c) => c.id === id)
+    if (card) {
+      setCards((prev) => prev.filter((c) => c.id !== id))
+      setSubjects((prev) =>
+        prev.map((s) => (s.id === card.subjectId ? { ...s, cardCount: Math.max(0, s.cardCount - 1) } : s)),
+      )
+      toast({ title: "Card excluído com sucesso!" })
     }
   }
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+          className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full"
+        />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20">
+      {/* Header */}
+      <header className="glass border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link href="/dashboard">
@@ -271,6 +214,8 @@ export default function CardsPage() {
           </div>
           <div className="flex items-center space-x-2">
             <ThemeToggle />
+
+            {/* Dialog para criar/editar assunto */}
             <Dialog open={showSubjectDialog} onOpenChange={setShowSubjectDialog}>
               <DialogTrigger asChild>
                 <Button
@@ -320,12 +265,13 @@ export default function CardsPage() {
               </DialogContent>
             </Dialog>
 
+            {/* Dialog para criar/editar card */}
             <Dialog open={showCardDialog} onOpenChange={setShowCardDialog}>
               <DialogTrigger asChild>
                 <Button
                   onClick={() => {
                     setEditingCard(null)
-                    setCardForm({ title: "", content: "", difficulty: 1, subject_id: "" })
+                    setCardForm({ title: "", content: "", difficulty: 1, subjectId: "" })
                   }}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -343,8 +289,8 @@ export default function CardsPage() {
                   <div>
                     <Label htmlFor="card-subject">Assunto</Label>
                     <Select
-                      value={cardForm.subject_id}
-                      onValueChange={(value) => setCardForm({ ...cardForm, subject_id: value })}
+                      value={cardForm.subjectId}
+                      onValueChange={(value) => setCardForm({ ...cardForm, subjectId: value })}
                       required
                     >
                       <SelectTrigger>
@@ -408,31 +354,39 @@ export default function CardsPage() {
         </div>
       </header>
 
+      {/* Conteúdo principal */}
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
+        {/* Seção de Assuntos */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
           <h2 className="text-xl font-semibold mb-4">Assuntos ({subjects.length})</h2>
-          {subjects.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="text-center py-8">
-                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  Nenhum assunto criado ainda. Crie um assunto para organizar seus cards.
-                </p>
-                <Button onClick={() => setShowSubjectDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Primeiro Assunto
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {subjects.map((subject) => (
-                <Card key={subject.id}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {subjects.map((subject, index) => (
+              <motion.div
+                key={subject.id}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
+              >
+                <Card className="glass hover:shadow-lg transition-all duration-300">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{subject.name}</CardTitle>
                       <div className="flex items-center space-x-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEditSubject(subject)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingSubject(subject)
+                            setSubjectForm({ name: subject.name, description: subject.description })
+                            setShowSubjectDialog(true)
+                          }}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleDeleteSubject(subject.id)}>
@@ -443,46 +397,61 @@ export default function CardsPage() {
                     {subject.description && <CardDescription>{subject.description}</CardDescription>}
                   </CardHeader>
                   <CardContent>
-                    <Badge variant="secondary">{subject.card_count ?? 0} cards</Badge>
+                    <Badge variant="secondary">{subject.cardCount} cards</Badge>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
 
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Cards ({cards.length})</h2>
-          {cards.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="text-center py-8">
-                <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  Nenhum card criado ainda. {subjects.length === 0 ? "Crie um assunto primeiro, depois" : "Crie"} seus
-                  primeiros memory cards.
-                </p>
-                {subjects.length > 0 ? (
-                  <Button onClick={() => setShowCardDialog(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Criar Primeiro Card
-                  </Button>
-                ) : (
-                  <Button onClick={() => setShowSubjectDialog(true)}>
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Criar Assunto Primeiro
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cards.map((card) => (
-                <Card key={card.id}>
+        {/* Seção de Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Cards ({cards.length})</h2>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Buscar cards..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-64"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCards.map((card, index) => (
+              <motion.div
+                key={card.id}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
+              >
+                <Card className="glass hover:shadow-lg transition-all duration-300 h-full">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg truncate">{card.title}</CardTitle>
                       <div className="flex items-center space-x-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEditCard(card)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingCard(card)
+                            setCardForm({
+                              title: card.title,
+                              content: card.content,
+                              difficulty: card.difficulty,
+                              subjectId: card.subjectId,
+                            })
+                            setShowCardDialog(true)
+                          }}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleDeleteCard(card.id)}>
@@ -494,17 +463,42 @@ export default function CardsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <Badge variant="outline">{card.subject_name}</Badge>
-                      <Badge className={getDifficultyColor(card.difficulty)}>
+                      <Badge variant="outline">{card.subjectName}</Badge>
+                      <Badge className={getDifficultyClass(card.difficulty)}>
                         {getDifficultyText(card.difficulty)}
                       </Badge>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {filteredCards.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="text-center py-12"
+            >
+              <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">
+                {searchTerm ? "Nenhum card encontrado" : "Nenhum card criado ainda"}
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                {searchTerm
+                  ? "Tente ajustar sua busca ou criar um novo card"
+                  : "Crie seus primeiros memory cards para começar a estudar"}
+              </p>
+              {!searchTerm && (
+                <Button onClick={() => setShowCardDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeiro Card
+                </Button>
+              )}
+            </motion.div>
           )}
-        </div>
+        </motion.div>
       </main>
     </div>
   )
