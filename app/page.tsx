@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { AuthForm } from "@/components/auth-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Brain, BookOpen, Trophy, Timer, Sparkles, Zap, Target } from "lucide-react"
-import { getStorageData, initializeData } from "@/lib/mock-data"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { FloatingParticles } from "@/components/floating-particles"
 import { AnimatedBackground } from "@/components/animated-background"
@@ -16,8 +15,7 @@ export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
-    initializeData()
-    const currentUser = getStorageData("memory-cards-user", null)
+    const currentUser = typeof window !== "undefined" ? localStorage.getItem("memory-cards-user") : null
     if (currentUser) {
       router.push("/dashboard")
     } else {

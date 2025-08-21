@@ -131,6 +131,7 @@ body {
   color: hsl(var(--foreground));
 }
 
+/* Animações customizadas */
 @keyframes blob {
   0% {
     transform: translate(0px, 0px) scale(1);
@@ -145,6 +146,7 @@ body {
     transform: translate(0px, 0px) scale(1);
   }
 }
+
 @keyframes float {
   0%,
   100% {
@@ -154,9 +156,11 @@ body {
     transform: translateY(-20px);
   }
 }
+
 .animate-blob {
   animation: blob 7s infinite;
 }
+
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
@@ -164,6 +168,7 @@ body {
 .animation-delay-2000 {
   animation-delay: 2s;
 }
+
 .animation-delay-4000 {
   animation-delay: 4s;
 }
@@ -174,47 +179,70 @@ body {
   background-size: 50px 50px;
 }
 
+/* Scrollbar customizada */
 ::-webkit-scrollbar {
   width: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: hsl(var(--muted));
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--primary));
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.8);
 }
 
-.btn-game {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
-  box-shadow: 0 4px 15px 0 rgba(59, 130, 246, 0.3);
-  transition: all 0.3s ease;
-}
-.btn-game:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px 0 rgba(59, 130, 246, 0.4);
+.dark ::-webkit-scrollbar-track {
+  background: oklch(0.269 0 0);
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(0.708 0.148 258.9);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.808 0.148 258.9);
+}
+
+/* Botão de jogo customizado */
+.btn-game {
+  background: linear-gradient(135deg, oklch(0.478 0.148 258.9) 0%, oklch(0.378 0.148 258.9) 100%);
+  box-shadow: 0 4px 15px 0 oklch(0.478 0.148 258.9 / 0.3);
+  transition: all 0.3s ease;
+}
+
+.btn-game:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px 0 oklch(0.478 0.148 258.9 / 0.4);
+}
+
+/* Badges de dificuldade */
 .badge-difficulty-1 {
   background: linear-gradient(135deg, #10b981, #059669);
   color: white;
 }
+
 .badge-difficulty-2 {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: white;
 }
+
 .badge-difficulty-3 {
   background: linear-gradient(135deg, #f59e0b, #d97706);
   color: white;
 }
+
 .badge-difficulty-4 {
   background: linear-gradient(135deg, #ef4444, #dc2626);
   color: white;
 }
+
 .badge-difficulty-5 {
   background: linear-gradient(135deg, #8b5cf6, #7c3aed);
   color: white;
