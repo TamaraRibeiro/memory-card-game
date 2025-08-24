@@ -42,8 +42,6 @@ interface CardItem {
 }
 
 export default function CardsPage() {
-  const [user, setUser] = useState<{ email: string } | null>(null)
-  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [showSubjectDialog, setShowSubjectDialog] = useState(false)
   const [showCardDialog, setShowCardDialog] = useState(false)
@@ -89,18 +87,18 @@ export default function CardsPage() {
   const [subjectForm, setSubjectForm] = useState({ name: "", description: "" })
   const [cardForm, setCardForm] = useState({ title: "", content: "", difficulty: 1, subjectId: "" })
 
-  useEffect(() => {
-    const currentUser =
-      typeof window !== "undefined" ? JSON.parse(localStorage.getItem("memory-cards-user") || "null") : null
+  // useEffect(() => {
+  //   const currentUser =
+  //     typeof window !== "undefined" ? JSON.parse(localStorage.getItem("memory-cards-user") || "null") : null
 
-    if (!currentUser) {
-      router.push("/")
-      return
-    }
+  //   if (!currentUser) {
+  //     router.push("/")
+  //     return
+  //   }
 
-    setUser(currentUser)
-    setLoading(false)
-  }, [router])
+  //   setUser(currentUser)
+  //   setLoading(false)
+  // }, [router])
 
   const filteredCards = cards.filter(
     (card) =>
@@ -186,17 +184,17 @@ export default function CardsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-          className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full"
-        />
-      </div>
-    )
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center">
+  //       <motion.div
+  //         animate={{ rotate: 360 }}
+  //         transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+  //         className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full"
+  //       />
+  //     </div>
+  //   )
+  // }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20">

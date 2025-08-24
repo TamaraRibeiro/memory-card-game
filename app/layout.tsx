@@ -1,31 +1,37 @@
-import type React from "react"
-import type { Metadata } from "next"
-
-import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/toaster"
-
-
+import type React from "react";
+import type { Metadata } from "next";
+import { SessionProvider } from "next-auth/react";
+import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: "Memory Cards - Treine sua Memória",
-  description: "Aplicação moderna para criar e treinar com memory cards personalizados",
-    generator: 'v0.app'
-}
+  description:
+    "Aplicação moderna para criar e treinar com memory cards personalizados",
+  generator: "v0.app",
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
-          {children}
-          <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
+          <SessionProvider>
+            {children}
+            <Toaster />
+          </SessionProvider>
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }

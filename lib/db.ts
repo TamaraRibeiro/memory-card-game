@@ -1,7 +1,9 @@
-import { neon } from "@neondatabase/serverless"
+"import 'server-only'";
+import { neon } from '@neondatabase/serverless';
+
+
 
 let sqlSingleton: ReturnType<typeof neon> | null = null
-
 export function getDB() {
   if (sqlSingleton) return sqlSingleton
 
